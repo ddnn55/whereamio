@@ -97,7 +97,7 @@ for jsonfilename in panojsons:
       tile = Image.open(first_tile_filename)
       tile = tile.crop((left, top, right, bottom))
 
-      out.paste(tile, (cropped_tile_size * pano_col, cropped_tile_size * rows - (cropped_tile_size * pano_row)))
+      out.paste(tile, (cropped_tile_size * pano_col, cropped_tile_size * rows - (cropped_tile_size * (pano_row+1))))
 
       #yaw_html = yaw + '<div style="display:block; width:80px; height:80px;"><div style="display:block;width:80px; height:3px; background-color:black; border:2px solid white; -webkit-transform: rotate('+str(float(yaw)+90)+'deg);"></div></div>'
       #map_html = '<a href="http://maps.google.com/maps?q='+ll+'">Full Map</a><br/><iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="http://maps.google.com/maps?f=q&amp;source=s_q&amp;hl=en&amp;geocode=&amp;q=40.759351,-73.885095&amp;aq=&amp;sll=33.775566,-84.375391&amp;sspn=0.012646,0.019183&amp;vpsrc=0&amp;ie=UTF8&amp;t=m&amp;z=16&amp;ll=' + ll + '&amp;output=embed"></iframe>'
