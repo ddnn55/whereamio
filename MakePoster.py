@@ -24,11 +24,13 @@ max_row = 0
 max_col = 0
 
 i = 0
+real_total = 0
 jsons_count = len(panojsons)
 for jsonfilename in panojsons:
    pano_metadata = jsonfilename[0:-5].split('_')
 
    if pano_metadata[0] == name and pano_metadata[1] == time:
+      real_total = real_total + 1
 
       pano_row = int(pano_metadata[4])
       pano_col = int(pano_metadata[5])
@@ -50,6 +52,7 @@ for jsonfilename in panojsons:
    sys.stdout.write('| ' + str(progress*100) + ' %\r')
    sys.stdout.flush()
    i = i + 1
+print ''
 
 rows = max_row + 1
 cols = max_col + 1
@@ -106,16 +109,16 @@ for jsonfilename in panojsons:
       #html_yaw_row  = html_yaw_row + '<td>' + yaw_html + '</td>'
       #html_map_row  = html_map_row + '<td>' + map_html + '</td>'
 
-   # Composite progress
-   sys.stdout.write('Compositing |')
-   progress = float(i) / float(jsons_count)
-   for p in range(0, int(progress * 50)):
-      sys.stdout.write('=')
-   for p in range(int(progress * 50), 50):
-      sys.stdout.write(' ')
-   sys.stdout.write('| ' + str(progress*100) + ' %\r')
-   sys.stdout.flush()
-   i = i + 1
-
+      # Composite progress
+      sys.stdout.write('Compositing |')
+      progress = float(i) / float(real_total)
+      for p in range(0, int(progress * 50)):
+         sys.stdout.write('=')
+      for p in range(int(progress * 50), 50):
+         sys.stdout.write(' ')
+      sys.stdout.write('| ' + str(progress*100) + ' %\r')
+      sys.stdout.flush()
+      i = i + 1
+print ''
    
 out.save('data/look/' + name + '_' + str(time) + '_' + str(cropped_tile_size) + '.jpg', 'JPEG')
