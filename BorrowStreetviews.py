@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import urllib2
 import json
 import pprint
@@ -38,6 +39,9 @@ def distance_on_spherical_earth(lat1, long1, lat2, long2):
     # in your favorite set of units to get length.
     return arc * 6378100
 
+def now():
+   unix_time = calendar.timegm(time.gmtime())
+   return unix_time
 
 top    = float(sys.argv[1])
 left   = float(sys.argv[2])
@@ -60,15 +64,17 @@ rows = int(columns * meter_height / meter_width)
 
 name = sys.argv[6]
 
-def now():
-   unix_time = calendar.timegm(time.gmtime())
-   return unix_time
+timestamp_id = 0
+if len(sys.argv) > 7:
+   timestamp_id = sys.argv[7]
+else:
+   timestamp_id = now()
 
-unix_time = now()
+
 
 zoom = 2
 
-print 'Session is: ' + name + ' ' + str(unix_time)
+print 'Session is: ' + name + ' ' + str(timestamp_id)
 
 #print rows
 #exit()
@@ -85,7 +91,7 @@ def saveMetadataAndDownloadTiles(panoJSON, column, row):
 
       longitude = pano[u'Location'][u'lng']
       latitude  = pano[u'Location'][u'lat']
-      localFile = open('data/panojson/'+name+'_'+str(unix_time)+'_'+str(latitude)+'_'+str(longitude)+'_'+str(row)+'_'+str(column)+'.json', 'w')
+      localFile = open('data/panojson/'+name+'_'+str(timestamp_id)+'_'+str(latitude)+'_'+str(longitude)+'_'+str(row)+'_'+str(column)+'.json', 'w')
       localFile.write(panoJSON)
       localFile.close()
 
@@ -97,10 +103,30 @@ def saveMetadataAndDownloadTiles(panoJSON, column, row):
          tile_file = open('data/panotile/'+panoid+'_z'+str(zoom)+'_'+str(pano_x)+'_0.jpeg', 'w')
          tile_file.write(tile_response.read())
          tile_file.close()
-   
 
-for x in range(0, columns):
+panojson_filenames = os.listdir('data/panojson')
+max_row = 0
+max_col = 0
+for filename in panojson_filenames:
+   components = filename[0:-5].split('_')
+   if len(components) == 6:
+      (json_name, json_timestamp_id, json_latitude, json_longitude, json_row, json_col) = filename[0:-5].split('_')
+      if json_name == name:
+         if json_timestamp_id == timestamp_id:
+            max_row = max(int(max_row), int(json_row))
+            max_col = max(int(max_col), int(json_col))
+
+resuming = True
+for x in range(max_col, columns):
    for y in range(0, rows):
+      if resuming and y < max_row:
+         continue
+      if resuming:
+         resuming = False
+         actual_start_timestamp = now()
+         start_progress = float(x * rows + y) / float(rows * columns)
+         
+
       latitude  = left   + degree_width  * x / columns
       longitude = bottom + degree_height * y / rows
       metadata_url = "http://cbk0.google.com/cbk?output=json&ll="+str(longitude)+","+str(latitude)
@@ -109,21 +135,22 @@ for x in range(0, columns):
       panoJSON = u.read()
       saveMetadataAndDownloadTiles(panoJSON, x, y)
       
-      elapsed = now() - unix_time
-      progress = float(x * rows + y) / float(rows * columns)
-      if progress > 0:
-         remaining = elapsed * (1 - progress) / progress
+      elapsed = now() - actual_start_timestamp
+      time_progress = (float(x * rows + y) / float(rows * columns) - start_progress) / (1.0 - start_progress)
+      task_progress = float(x * rows + y) / float(rows * columns)
+      if time_progress > 0:
+         remaining = elapsed * (1 - time_progress) / time_progress
       else:
          remaining = 0
       hours, remainder = divmod(remaining, 3600)
       minutes, seconds = divmod(remainder, 60)
 
       sys.stdout.write('|')
-      for p in range(0, int(progress * 50)):
+      for p in range(0, int(task_progress * 50)):
          sys.stdout.write('=')
-      for p in range(int(progress * 50), 50):
+      for p in range(int(task_progress * 50), 50):
          sys.stdout.write(' ')
-      sys.stdout.write('| ' + str(int(progress*100)) + ' % Remaining: ' + str(int(hours)) + 'h ' + str(int(minutes)) + 'm ' + str(int(seconds)) + 's               \r')
+      sys.stdout.write('| ' + str(int(task_progress*100)) + ' % Remaining: ' + str(int(hours)) + 'h ' + str(int(minutes)) + 'm ' + str(int(seconds)) + 's               \r')
       sys.stdout.flush()
 
 sys.stdout.write('\n')
