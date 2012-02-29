@@ -116,7 +116,7 @@ for filename in panojson_filenames:
             max_row = max(int(max_row), int(json_row))
             max_col = max(int(max_col), int(json_col))
 
-resuming = True
+resuming = True # FIXME resume is broken!
 for x in range(max_col, columns):
    for y in range(0, rows):
       if resuming and y < max_row:
