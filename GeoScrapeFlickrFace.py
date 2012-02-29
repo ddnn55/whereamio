@@ -2,11 +2,17 @@
 
 import sys
 import os
+
 import urllib2
+import flickrapi
+
 import json
+
 import pprint
+
 import time, calendar
 from datetime import timedelta
+
 import math
 
 def distance_on_spherical_earth(lat1, long1, lat2, long2):
@@ -83,6 +89,74 @@ print str(columns) + ' x ' + str(rows)
 print str(degree_width) + " x " + str(degree_height)
 
 
+
+
+class FlickrPhotos:
+
+   api_key    = '9db4bbb1d275baedb6e77c2aa7538c90'
+   api_secret = '09be4700c52c3996'
+
+   def __init__(self):
+      self.flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret)
+      # authenticate
+      (token, frob) = self.flickr.get_token_part_one(perms='read')
+      if not token: raw_input("Press ENTER after you authorized this program")
+      self.flickr.get_token_part_two((token, frob))
+      print "Authed to Flickr"
+
+   def getPhotosAtLatLng(self, latitude, longitude):
+
+      print "start getPhotosAtLatLng"
+
+      #photos = flickr.photos_geo_photosForLocation(lon='41.882692', lat='-87.623316', per_page='500')
+      #photos = flickr.photos_search(lon='41.882692', lat='-87.623316', per_page='500')
+      #for current_page in range(1, pages+1):
+         #photos = flickr.photos_search(place_id=2379574, text="the bean", per_page='500', page=str(current_page))
+
+
+
+
+      photos_response = self.flickr.photos_search(lat=latitude, lon=longitude, min_upload_date='1238433133', max_upload_date='1298433133', accuracy='16', per_page='500', page=0)
+
+
+      
+      #photos_response = self.flickr.photos_search(lat=40.830891, lon=-73.865304, min_upload_date='1238433133', max_upload_date='1298433133', accuracy='16', per_page='500', page=0)
+      return photos_response[0]
+
+      for photoss in photos_response:
+      #   print photo
+         for photo in photoss:
+            # <photo farm="8" id="6630559531" isfamily="0" isfriend="0" ispublic="1" owner="74669477@N00" secret="e56a7ce7ba" server="7020" title="love and the bean 3" />
+            url = "http://farm%s.staticflickr.com/%s/%s_%s_b.jpg" % ( photo.attrib['farm'], photo.attrib['server'], photo.attrib['id'], photo.attrib['secret'] )
+            #print photo.attrib['id']
+            #image_response = urllib2.urlopen(url)
+            #image_file = open("data/flickr_image/%s_%s_%s_%s_b.jpg" % ( photo.attrib['farm'], photo.attrib['server'], photo.attrib['id'], photo.attrib['secret'] ), 'w')
+            #image_file.write(image_response.read())
+            #image_file.close()
+            print "Found " + url
+      print str(latitude) + ', ' + str(longitude)
+      sys.exit(0)
+
+
+
+
+class FaceDetector:
+
+   api_key = '256d354cd4cd3e51ab8ce004b1f6aad2'
+   api_secret = '9d629a8692f4c407e092f59ffec2f384'
+
+   def getFaces(self, url):
+      faces_url = 'http://api.face.com/faces/detect.json?api_key='+self.api_key+'&api_secret='+self.api_secret+'&format=json&attributes=all&urls='+url
+      face_response = urllib2.urlopen(faces_url)
+      #face_str = face_response.read()
+      face_str = file('face_sample.json').read()
+      print "============"
+      print face_str
+      print "============"
+      faces = json.loads(face_str)
+      return faces
+
+
 def saveMetadataAndDownloadTiles(panoJSON, column, row):
    pano = json.loads(panoJSON)
    if len(pano) > 0:
@@ -100,9 +174,9 @@ def saveMetadataAndDownloadTiles(panoJSON, column, row):
          tile_url = "http://cbk0.google.com/cbk?output=tile&panoid="+panoid+"&zoom="+str(zoom)+"&x="+str(pano_x)+"&y=0"
          #print "Borrowing image at " + tile_url
          tile_response = urllib2.urlopen(tile_url)
-         tile_file = open('data/panotile/'+panoid+'_z'+str(zoom)+'_'+str(pano_x)+'_0.jpeg', 'w')
-         tile_file.write(tile_response.read())
-         tile_file.close()
+         #tile_file = open('data/panotile/'+panoid+'_z'+str(zoom)+'_'+str(pano_x)+'_0.jpeg', 'w')
+         #tile_file.write(tile_response.read())
+         #tile_file.close()
 
 panojson_filenames = os.listdir('data/panojson')
 max_row = 0
@@ -117,24 +191,47 @@ for filename in panojson_filenames:
             max_col = max(int(max_col), int(json_col))
 
 resuming = True # FIXME resume is broken!
+
+flickrPhotos = FlickrPhotos()
+faceDetector = FaceDetector()
+
+pp = pprint.PrettyPrinter(indent=4)
+
 for x in range(max_col, columns):
    for y in range(0, rows):
-      if resuming and y < max_row:
-         continue
-      if resuming:
-         resuming = False
-         actual_start_timestamp = now()
-         start_progress = float(x * rows + y) / float(rows * columns)
-         
 
-      latitude  = left   + degree_width  * x / columns
-      longitude = bottom + degree_height * y / rows
-      metadata_url = "http://cbk0.google.com/cbk?output=json&ll="+str(longitude)+","+str(latitude)
-      #print "Borrowing " + metadata_url
-      u = urllib2.urlopen(metadata_url)
-      panoJSON = u.read()
-      saveMetadataAndDownloadTiles(panoJSON, x, y)
+      longitude  = left   + degree_width  * x / columns
+      latitude = bottom + degree_height * y / rows
+
+
+
       
+
+      photos = flickrPhotos.getPhotosAtLatLng(latitude, longitude)
+      pp.pprint(photos)
+
+      # look for faces
+
+      for photo in photos:
+         pp.pprint(photo)
+         # <photo farm="8" id="6630559531" isfamily="0" isfriend="0" ispublic="1" owner="74669477@N00" secret="e56a7ce7ba" server="7020" title="love and the bean 3" />
+         url = "http://farm%s.staticflickr.com/%s/%s_%s_b.jpg" % ( photo.attrib['farm'], photo.attrib['server'], photo.attrib['id'], photo.attrib['secret'] )
+         #print photo.attrib['id']
+         #image_response = urllib2.urlopen(url)
+         #image_file = open("data/flickr_image/%s_%s_%s_%s_b.jpg" % ( photo.attrib['farm'], photo.attrib['server'], photo.attrib['id'], photo.attrib['secret'] ), 'w')
+         #image_file.write(image_response.read())
+         #image_file.close()
+         url = 'http://farm2.staticflickr.com/1081/4605302764_cd76e6c5fa_b.jpg'
+         print "Finding faces in " + url + " ..."
+         faces = faceDetector.getFaces(url)
+         pp.pprint(faces)
+
+         sys.exit(0)
+         
+         saveMetadataAndDownloadImage(panoJSON, x, y)
+      
+
+
       elapsed = now() - actual_start_timestamp
       time_progress = (float(x * rows + y) / float(rows * columns) - start_progress) / (1.0 - start_progress)
       task_progress = float(x * rows + y) / float(rows * columns)
