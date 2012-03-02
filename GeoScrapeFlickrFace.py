@@ -112,14 +112,7 @@ class FlickrPhotos:
       #photos = flickr.photos_search(lon='41.882692', lat='-87.623316', per_page='500')
       #for current_page in range(1, pages+1):
          #photos = flickr.photos_search(place_id=2379574, text="the bean", per_page='500', page=str(current_page))
-
-
-
-
       photos_response = self.flickr.photos_search(lat=latitude, lon=longitude, min_upload_date='1238433133', max_upload_date='1298433133', accuracy='16', per_page='500', page=0)
-
-
-      
       #photos_response = self.flickr.photos_search(lat=40.830891, lon=-73.865304, min_upload_date='1238433133', max_upload_date='1298433133', accuracy='16', per_page='500', page=0)
       return photos_response[0]
 
@@ -148,11 +141,11 @@ class FaceDetector:
    def getFaces(self, url):
       faces_url = 'http://api.face.com/faces/detect.json?api_key='+self.api_key+'&api_secret='+self.api_secret+'&format=json&attributes=all&urls='+url
       face_response = urllib2.urlopen(faces_url)
-      #face_str = face_response.read()
-      face_str = file('face_sample.json').read()
-      print "============"
-      print face_str
-      print "============"
+      face_str = face_response.read()
+      #face_str = file('face_sample.json').read()
+      #print "============"
+      #print face_str
+      #print "============"
       faces = json.loads(face_str)
       return faces
 
@@ -221,9 +214,12 @@ for x in range(max_col, columns):
          #image_file = open("data/flickr_image/%s_%s_%s_%s_b.jpg" % ( photo.attrib['farm'], photo.attrib['server'], photo.attrib['id'], photo.attrib['secret'] ), 'w')
          #image_file.write(image_response.read())
          #image_file.close()
-         url = 'http://farm2.staticflickr.com/1081/4605302764_cd76e6c5fa_b.jpg'
+         #url = 'http://farm2.staticflickr.com/1081/4605302764_cd76e6c5fa_b.jpg'
          print "Finding faces in " + url + " ..."
          faces = faceDetector.getFaces(url)
+         if faces['status'] == 'success':
+            if len(faces['photos'][0]['tags']) > 0:
+               
          pp.pprint(faces)
 
          sys.exit(0)
