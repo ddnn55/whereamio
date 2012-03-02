@@ -36,14 +36,27 @@ def distance_on_spherical_earth(lat1, long1, lat2, long2):
 
 class GeoGridCell:
 
-   def __init__(self, left, right, top, bottom):
+   def __init__(self, left, right, top, bottom, row, column):
       self.top    = top
       self.left   = left
       self.bottom = bottom
       self.right  = right
 
+      self.row = row
+      self.column = column
+
    def center(self):
       return ( (self.left + self.right) / 2.0, (self.top + self.bottom) / 2.0 )
+
+   def toDict(self):
+      data = { "bounds": {}, "location": {} }
+      data['bounds']['left'] = self.left
+      data['bounds']['right'] = self.right
+      data['bounds']['top'] = self.top
+      data['bounds']['bottom'] = self.bottom
+      data['location']['row'] = self.row
+      data['location']['column'] = self.column
+      return data
 
 class GeoGrid:
 
@@ -77,7 +90,7 @@ class GeoGrid:
 	    cell_degree_bottom = self.bottom + cell_degree_height * y
 	    cell_degree_top    = cell_degree_bottom + cell_degree_height
 
-            cell = GeoGridCell(cell_degree_left, cell_degree_right, cell_degree_top, cell_degree_bottom)
+            cell = GeoGridCell(cell_degree_left, cell_degree_right, cell_degree_top, cell_degree_bottom, y, x)
             cell_callback(cell)
 
 if __name__ == "__main__":
