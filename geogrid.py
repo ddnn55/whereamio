@@ -72,9 +72,9 @@ class GeoGrid:
             cell_degree_width  = self.degree_width  * 1.0 / self.columns
             cell_degree_height = self.degree_height * 1.0 / self.rows
 
-	    cell_degree_left   = self.left + self.degree_width  * x
+	    cell_degree_left   = self.left + cell_degree_width  * x
 	    cell_degree_right  = cell_degree_left + cell_degree_width
-	    cell_degree_bottom = self.bottom + self.degree_height * y
+	    cell_degree_bottom = self.bottom + cell_degree_height * y
 	    cell_degree_top    = cell_degree_bottom + cell_degree_height
 
             cell = GeoGridCell(cell_degree_left, cell_degree_right, cell_degree_top, cell_degree_bottom)
