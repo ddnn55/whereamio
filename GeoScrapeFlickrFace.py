@@ -49,6 +49,7 @@ def now():
    unix_time = calendar.timegm(time.gmtime())
    return unix_time
 
+
 top    = float(sys.argv[1])
 left   = float(sys.argv[2])
 bottom = float(sys.argv[3])
