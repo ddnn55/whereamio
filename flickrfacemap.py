@@ -26,6 +26,9 @@ class FlickrPhoto:
       url = "http://farm%s.staticflickr.com/%s/%s_%s_b.jpg" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
       return url
 
+   def lat_lng(self):
+      return (float(self.xml.attrib['latitude']), float(self.xml.attrib['longitude']))
+
    def flickr_locator_string(self):
       return "%s_%s_%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
       
@@ -56,11 +59,15 @@ class Flickr:
       bbox_string = "%s,%s,%s,%s" % (bounds['left'], bounds['bottom'], bounds['right'], bounds['top'])
 
       # TODO search smartly through time limits
-      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date='1238433133', max_upload_date='1298433133', per_page=limit, page=0)
+      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date='1238433133', max_upload_date='1298433133', per_page=limit, extras="geo", page=0)
 
       photos = []
       for photoxml in photos_response[0]:
-         photos.append(FlickrPhoto(photoxml))
+         photo = FlickrPhoto(photoxml)
+         photos.append(photo)
+         (lat, lng) = photo.lat_lng()
+         if lat < bounds['bottom'] or lat > bounds['top'] or lng < bounds['left'] or lng > bounds['right']:
+            print "WTSSSSSSSSSSSSSSSSSSSSSSSSSS " + str(photo.lat_lng()) + " not in " + str(bounds)
       return photos
 
 
@@ -92,6 +99,40 @@ class FaceDetector:
       return None
 
 
+class FaceCell:
+
+   def __init__(self, cell_dir, row, column):
+      self.cell_dir = cell_dir
+      self.row = row
+      self.column = column
+
+   def get_cropped_image(self):
+      json_files = glob.glob(self.cell_dir + "/*.json")
+      jpg_files  = glob.glob(self.cell_dir + "/*.jpg")
+
+      tag = json.load(file(json_files[0]))
+      face_image = Image.open(jpg_files[0])
+
+      image_width  = face_image.size[0]
+      image_height = face_image.size[1]
+
+      face_pixel_center_x = (tag['center']['x'] / 100.0) * image_width
+      face_pixel_center_y = (tag['center']['y'] / 100.0) * image_height
+
+      face_pixel_width  = (tag['width'] / 100.0)  * image_width
+      face_pixel_height = (tag['height'] / 100.0) * image_height
+      face_pixel_size = max(face_pixel_width, face_pixel_height)
+
+      face_pixel_left   = face_pixel_center_x - face_pixel_size / 2.0
+      face_pixel_right  = face_pixel_center_x + face_pixel_size / 2.0
+      face_pixel_bottom = face_pixel_center_y - face_pixel_size / 2.0
+      face_pixel_top    = face_pixel_center_y + face_pixel_size / 2.0
+
+      face_image = face_image.crop((int(face_pixel_left), int(face_pixel_bottom), int(face_pixel_right), int(face_pixel_top)))
+      face_image = face_image.resize((FACE_TILE_SIZE, FACE_TILE_SIZE), Image.ANTIALIAS)
+
+      return face_image
+      
 
 
 class FlickrFaceMap:
@@ -137,7 +178,31 @@ class FlickrFaceMap:
             self.saveFace(face, photo, cell)
 
    def saveBigImage(self):
+      bounds = self.get_grid_bounds()
+      pixel_width  = bounds['columns'] * FACE_TILE_SIZE
+      pixel_height = bounds['rows']    * FACE_TILE_SIZE
 
+      self.big_image = Image.new('RGBA', (pixel_width, pixel_height))
+      self.foreach_face_cell(self.place_in_big_image)
+
+      out_dir = "data/faceit"
+      if not os.path.exists(out_dir):
+	 os.makedirs(out_dir)
+      out_path = out_dir + "/face_" + self.session_name + "_" + self.session_timestamp + ".jpg"
+      self.big_image.save(out_path)
+      
+      print "Saved " + out_path
+
+   def place_in_big_image(self, cell):
+      x = cell.column * FACE_TILE_SIZE
+      y = cell.row    * FACE_TILE_SIZE
+
+      self.big_image.paste(cell.get_cropped_image(), (x, y))
+
+      print "Pasted at " + str(x) + " " + str(y)
+
+
+   def get_grid_bounds(self):
       min_row = None
       max_row = None
       min_column = None
@@ -166,50 +231,19 @@ class FlickrFaceMap:
       columns = (max_column - min_column + 1)
       rows    = (max_row    - min_row    + 1)
 
-      pixel_width  = columns * FACE_TILE_SIZE
-      pixel_height = rows    * FACE_TILE_SIZE
+      return {'min_column': min_column, 'max_column': max_column, 'max_row': max_row, 'min_row': min_row, 'columns': columns, 'rows': rows}
 
-      out = Image.new('RGBA', (pixel_width, pixel_height))
 
+   def foreach_face_cell(self, callback):
+      row_dirs = os.listdir(self.root_face_image_dir)
       for row_name in row_dirs:
          column_dirs = os.listdir(self.root_face_image_dir + "/" + row_name)
          for column_name in column_dirs:
             cell_dir = self.root_face_image_dir + "/" + row_name + "/" + column_name
-            json_files = glob.glob(cell_dir + "/*.json")
-            jpg_files  = glob.glob(cell_dir + "/*.jpg")
-
-            tag = json.load(file(json_files[0]))
-            face_image = Image.open(jpg_files[0])
-
-            image_width  = face_image.size[0]
-            image_height = face_image.size[1]
-
-            face_pixel_center_x = (tag['center']['x'] / 100.0) * image_width
-            face_pixel_center_y = (tag['center']['y'] / 100.0) * image_height
-
-            face_pixel_width  = (tag['width'] / 100.0)  * image_width
-            face_pixel_height = (tag['height'] / 100.0) * image_height
-            face_pixel_size = max(face_pixel_width, face_pixel_height)
-
-            face_pixel_left   = face_pixel_center_x - face_pixel_size / 2.0
-            face_pixel_right  = face_pixel_center_x + face_pixel_size / 2.0
-            face_pixel_bottom = face_pixel_center_y - face_pixel_size / 2.0
-            face_pixel_top    = face_pixel_center_y + face_pixel_size / 2.0
-
-            face_image = face_image.crop((int(face_pixel_left), int(face_pixel_bottom), int(face_pixel_right), int(face_pixel_top)))
-            face_image = face_image.resize((FACE_TILE_SIZE, FACE_TILE_SIZE), Image.ANTIALIAS)
 
             column = int(column_name)
             row    = int(row_name)
 
-            x = column * FACE_TILE_SIZE
-            y = row    * FACE_TILE_SIZE
+            cell = FaceCell(cell_dir, row, column)
+            callback(cell)
 
-            out.paste(face_image, (x, y))
-
-            print "Pasted to " + str(x) + " " + str(y) + " " + jpg_files[0]
-
-      out_dir = "data/faceit"
-      if not os.path.exists(out_dir):
-	 os.makedirs(out_dir)
-      out.save(out_dir + "/face_" + self.session_name + "_" + self.session_timestamp + ".jpg")
