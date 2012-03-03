@@ -19,12 +19,21 @@ pp = pprint.PrettyPrinter(indent=3)
 
 class FlickrPhoto:
 
-   def __init__(self, flickrapi_photo_xml):
-      self.xml = flickrapi_photo_xml
+   def __init__(self, xml=None, locator_string=None, flickr=None):
+      self.xml = xml
+      self.locator_string = locator_string
+      self.flickr = flickr
 
    def big_url(self):
       url = "http://farm%s.staticflickr.com/%s/%s_%s_b.jpg" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
       return url
+
+   def page_url(self):
+      (farm, server, photo_id, secret) = self.locator_string.split('_')
+      user_id = self.flickr.get_photo_user_id(photo_id, secret)
+      return "http://www.flickr.com/photos/"+user_id+"/"+photo_id
+      
+      
 
    def lat_lng(self):
       return (float(self.xml.attrib['latitude']), float(self.xml.attrib['longitude']))
@@ -58,18 +67,21 @@ class Flickr:
 
       bbox_string = "%s,%s,%s,%s" % (bounds['left'], bounds['bottom'], bounds['right'], bounds['top'])
 
-      # TODO search smartly through time limits
+      # TODO search smartly through time limits (Flickr requires limiter for geo queries, like time limits...)
       photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date='1238433133', max_upload_date='1298433133', per_page=limit, extras="geo", page=0)
 
       photos = []
       for photoxml in photos_response[0]:
-         photo = FlickrPhoto(photoxml)
+         photo = FlickrPhoto(xml=photoxml)
          photos.append(photo)
          (lat, lng) = photo.lat_lng()
          if lat < bounds['bottom'] or lat > bounds['top'] or lng < bounds['left'] or lng > bounds['right']:
             print "WTSSSSSSSSSSSSSSSSSSSSSSSSSS " + str(photo.lat_lng()) + " not in " + str(bounds)
       return photos
 
+   def get_photo_user_id(self, photo_id, secret):
+      info_response = self.flickr.photos_getInfo(photo_id=photo_id, secret=secret) #omg will this work
+      return info_response.find('photo').find('owner').attrib['nsid']
 
 class FaceDetector:
 
@@ -101,10 +113,18 @@ class FaceDetector:
 
 class FaceCell:
 
-   def __init__(self, cell_dir, row, column):
+   def __init__(self, cell_dir, row, column, facemap):
       self.cell_dir = cell_dir
       self.row = row
       self.column = column
+      self.facemap = facemap
+
+   def flickr_photo(self):
+      jpg_files  = glob.glob(self.cell_dir + "/*.jpg")
+      flickr_locator_string = jpg_files[0].split('.')[0]
+      photo = FlickrPhoto(locator_string=flickr_locator_string, flickr=self.facemap.flickrPhotos)
+      return photo
+      
 
    def get_cropped_image(self):
       json_files = glob.glob(self.cell_dir + "/*.json")
@@ -177,6 +197,40 @@ class FlickrFaceMap:
             face = faces[0]
             self.saveFace(face, photo, cell)
 
+   def interactive_dir(self):
+      return "data/faceit_interactive/" + self.session_name + "_" + self.session_timestamp
+
+   def saveInteractiveMap(self):
+      bounds = self.get_grid_bounds()
+      pixel_width  = bounds['columns'] * FACE_TILE_SIZE
+      pixel_height = bounds['rows']    * FACE_TILE_SIZE
+
+      out_dir = self.interactive_dir()
+      if not os.path.exists(out_dir):
+	 os.makedirs(out_dir)
+
+      self.html_file = open(out_dir + "/index.html", "w")
+      self.foreach_face_cell(self.place_in_html_file)
+      self.html_file.close()
+      
+      print "Saved " + out_dir + "/index.html"
+
+   def place_in_html_file(self, cell):
+      x = cell.column * FACE_TILE_SIZE
+      y = cell.row    * FACE_TILE_SIZE
+
+      image_relative_url_dir = "images/" + str(x) + "/" + str(y)
+      image_dir = self.interactive_dir() + "/" + image_relative_url_dir
+      if not os.path.exists(image_dir):
+	 os.makedirs(image_dir)
+
+      cell.get_cropped_image().save(image_dir + "/face.jpg")
+
+      self.html_file.write('<a href="'+cell.flickr_photo().page_url()+'">')
+      self.html_file.write('<img style="position:absolute;left:'+str(x)+';top:'+str(y)+';" src="'+image_relative_url_dir+'/face.jpg"></a>')
+      
+      
+
    def saveBigImage(self):
       bounds = self.get_grid_bounds()
       pixel_width  = bounds['columns'] * FACE_TILE_SIZE
@@ -236,7 +290,11 @@ class FlickrFaceMap:
 
    def foreach_face_cell(self, callback):
       row_dirs = os.listdir(self.root_face_image_dir)
+      r = 0
       for row_name in row_dirs:
+         r = r + 1
+         print str(r) + " / " + str(len(row_dirs)) + " rows"
+
          column_dirs = os.listdir(self.root_face_image_dir + "/" + row_name)
          for column_name in column_dirs:
             cell_dir = self.root_face_image_dir + "/" + row_name + "/" + column_name
@@ -244,6 +302,6 @@ class FlickrFaceMap:
             column = int(column_name)
             row    = int(row_name)
 
-            cell = FaceCell(cell_dir, row, column)
+            cell = FaceCell(cell_dir, row, column, self)
             callback(cell)
 
