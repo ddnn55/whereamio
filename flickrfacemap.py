@@ -90,7 +90,7 @@ class FaceDetector:
 
 
 
-class GeoFlickrFaceFinder:
+class FlickrFaceMap:
 
    def __init__(self, name, timestamp):
       self.session = {}

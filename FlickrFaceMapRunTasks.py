@@ -4,7 +4,7 @@ import sys
 import os
 import json
 
-import geoflickrfacefinder
+import flickrfacemap
 
 # list open tasks
 if len(sys.argv) < 3:
@@ -24,7 +24,7 @@ timestamp = sys.argv[2]
 
 task_queue_directory = "data/tasks/flickr_geo_face/"+name+"/"+timestamp
 
-gfff = geoflickrfacefinder.GeoFlickrFaceFinder(name, timestamp)
+gfff = flickrfacemap.FlickrFaceMap(name, timestamp)
 
 for task_filename in os.listdir(task_queue_directory):
    task_filepath = task_queue_directory + "/" + task_filename
