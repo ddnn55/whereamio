@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+FACE_TILE_SIZE = 256
+
 import sys
 import os
 import urllib2
@@ -9,6 +11,8 @@ import pprint
 import time, calendar
 from datetime import timedelta
 import math
+from PIL import Image
+import glob
 
 
 pp = pprint.PrettyPrinter(indent=3)
@@ -131,3 +135,81 @@ class FlickrFaceMap:
          if faces != None:
             face = faces[0]
             self.saveFace(face, photo, cell)
+
+   def saveBigImage(self):
+
+      min_row = None
+      max_row = None
+      min_column = None
+      max_column = None
+
+      row_dirs = os.listdir(self.root_face_image_dir)
+
+      for row_name in row_dirs:
+         column_dirs = os.listdir(self.root_face_image_dir + "/" + row_name)
+         for column_name in column_dirs:
+            if min_row == None:
+               min_row    = int(row_name)
+               max_row    = int(row_name)
+               min_column = int(column_name)
+               max_column = int(column_name)
+            else:
+               if int(row_name) < min_row:
+		  min_row    = int(row_name)
+               if int(row_name) > max_row:
+		  max_row    = int(row_name)
+               if int(column_name) < min_column:
+		  min_column = int(column_name)
+               if int(column_name) > max_column:
+		  max_column = int(column_name)
+
+      columns = (max_column - min_column + 1)
+      rows    = (max_row    - min_row    + 1)
+
+      pixel_width  = columns * FACE_TILE_SIZE
+      pixel_height = rows    * FACE_TILE_SIZE
+
+      out = Image.new('RGBA', (pixel_width, pixel_height))
+
+      for row_name in row_dirs:
+         column_dirs = os.listdir(self.root_face_image_dir + "/" + row_name)
+         for column_name in column_dirs:
+            cell_dir = self.root_face_image_dir + "/" + row_name + "/" + column_name
+            json_files = glob.glob(cell_dir + "/*.json")
+            jpg_files  = glob.glob(cell_dir + "/*.jpg")
+
+            tag = json.load(file(json_files[0]))
+            face_image = Image.open(jpg_files[0])
+
+            image_width  = face_image.size[0]
+            image_height = face_image.size[1]
+
+            face_pixel_center_x = (tag['center']['x'] / 100.0) * image_width
+            face_pixel_center_y = (tag['center']['y'] / 100.0) * image_height
+
+            face_pixel_width  = (tag['width'] / 100.0)  * image_width
+            face_pixel_height = (tag['height'] / 100.0) * image_height
+            face_pixel_size = max(face_pixel_width, face_pixel_height)
+
+            face_pixel_left   = face_pixel_center_x - face_pixel_size / 2.0
+            face_pixel_right  = face_pixel_center_x + face_pixel_size / 2.0
+            face_pixel_bottom = face_pixel_center_y - face_pixel_size / 2.0
+            face_pixel_top    = face_pixel_center_y + face_pixel_size / 2.0
+
+            face_image = face_image.crop((int(face_pixel_left), int(face_pixel_bottom), int(face_pixel_right), int(face_pixel_top)))
+            face_image = face_image.resize((FACE_TILE_SIZE, FACE_TILE_SIZE), Image.ANTIALIAS)
+
+            column = int(column_name)
+            row    = int(row_name)
+
+            x = column * FACE_TILE_SIZE
+            y = row    * FACE_TILE_SIZE
+
+            out.paste(face_image, (x, y))
+
+            print "Pasted to " + str(x) + " " + str(y) + " " + jpg_files[0]
+
+      out_dir = "data/faceit"
+      if not os.path.exists(out_dir):
+	 os.makedirs(out_dir)
+      out.save(out_dir + "/face_" + self.session_name + "_" + self.session_timestamp + ".jpg")
