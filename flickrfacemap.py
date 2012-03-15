@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-FACE_TILE_SIZE = 256
+FACE_TILE_SIZE = 128
 
 import sys
 import os
@@ -63,8 +63,6 @@ class Flickr:
 
    def getPhotos(self, bounds, limit):
 
-      print "start getPhotosAtLatLng"
-
       bbox_string = "%s,%s,%s,%s" % (bounds['left'], bounds['bottom'], bounds['right'], bounds['top'])
 
       # TODO search smartly through time limits (Flickr requires limiter for geo queries, like time limits...)
@@ -88,14 +86,18 @@ class FaceDetector:
    api_key = '256d354cd4cd3e51ab8ce004b1f6aad2'
    api_secret = '9d629a8692f4c407e092f59ffec2f384'
 
+   api_calls_remaining = 0
+   api_limit_reset_time = ""
+
    def getFaces(self, url):
       faces_url = 'http://api.face.com/faces/detect.json?api_key='+self.api_key+'&api_secret='+self.api_secret+'&format=json&attributes=all&urls='+url
       face_response = urllib2.urlopen(faces_url)
       face_str = face_response.read()
       response = json.loads(face_str)
 
-      # API limit reminder...
-      sys.stderr.write(str(response['usage']['remaining']) + ' calls remaining. resets at ' + response['usage']['reset_time_text'] + "\n")
+      # API rate limits
+      self.api_calls_remaining = response['usage']['remaining']
+      self.api_limit_reset_time = response['usage']['reset_time_text']
 
       if response['status'] == 'success':
 	 tags = response['photos'][0]['tags']
@@ -190,12 +192,15 @@ class FlickrFaceMap:
       while face == None and len(photos) > 0:
          photo = photos.pop()
 
-         print "finding faces in " + str(cell['location']['row']) + ", " + str(cell['location']['column']) + ": " + photo.big_url() + " ..."
+         #print "finding faces in " + str(cell['location']['row']) + ", " + str(cell['location']['column']) + ": " + photo.big_url() + " ..."
          faces = self.faceDetector.getFaces(photo.big_url())
 
          if faces != None:
             face = faces[0]
             self.saveFace(face, photo, cell)
+
+   def face_api_pretty_status(self):
+      return str(self.faceDetector.api_calls_remaining) + " calls remaining. resets at " + str(self.faceDetector.api_limit_reset_time)
 
    def interactive_dir(self):
       return "data/faceit_interactive/" + self.session_name + "_" + self.session_timestamp
@@ -216,8 +221,8 @@ class FlickrFaceMap:
       print "Saved " + out_dir + "/index.html"
 
    def place_in_html_file(self, cell):
-      x = cell.column * FACE_TILE_SIZE
-      y = cell.row    * FACE_TILE_SIZE
+      x = cell.column                        * FACE_TILE_SIZE
+      y = (cell.facemap.rows - cell.row - 1) * FACE_TILE_SIZE
 
       image_relative_url_dir = "images/" + str(x) + "/" + str(y)
       image_dir = self.interactive_dir() + "/" + image_relative_url_dir
@@ -248,8 +253,8 @@ class FlickrFaceMap:
       print "Saved " + out_path
 
    def place_in_big_image(self, cell):
-      x = cell.column * FACE_TILE_SIZE
-      y = cell.row    * FACE_TILE_SIZE
+      x = cell.column                        * FACE_TILE_SIZE
+      y = (cell.facemap.rows - cell.row - 1) * FACE_TILE_SIZE
 
       self.big_image.paste(cell.get_cropped_image(), (x, y))
 
@@ -282,10 +287,10 @@ class FlickrFaceMap:
                if int(column_name) > max_column:
 		  max_column = int(column_name)
 
-      columns = (max_column - min_column + 1)
-      rows    = (max_row    - min_row    + 1)
+      self.columns = (max_column - min_column + 1)
+      self.rows    = (max_row    - min_row    + 1)
 
-      return {'min_column': min_column, 'max_column': max_column, 'max_row': max_row, 'min_row': min_row, 'columns': columns, 'rows': rows}
+      return {'min_column': min_column, 'max_column': max_column, 'max_row': max_row, 'min_row': min_row, 'columns': self.columns, 'rows': self.rows}
 
 
    def foreach_face_cell(self, callback):

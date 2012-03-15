@@ -113,7 +113,8 @@ for jsonfilename in panojsons:
       first_tile_filename = 'data/panotile/' + panoid + '_z2_0_0.jpeg'
 
       left   = int((tile_size - cropped_tile_size) / 2);
-      top    = left;
+      #top    = left;
+      top    = 2 * left;
       right  = left + cropped_tile_size
       bottom = top + cropped_tile_size
 
