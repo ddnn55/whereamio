@@ -128,7 +128,7 @@ class FaceCell:
       return photo
       
 
-   def get_cropped_image(self):
+   def get_cropped_image(self, size):
       json_files = glob.glob(self.cell_dir + "/*.json")
       jpg_files  = glob.glob(self.cell_dir + "/*.jpg")
 
@@ -151,7 +151,7 @@ class FaceCell:
       face_pixel_top    = face_pixel_center_y + face_pixel_size / 2.0
 
       face_image = face_image.crop((int(face_pixel_left), int(face_pixel_bottom), int(face_pixel_right), int(face_pixel_top)))
-      face_image = face_image.resize((FACE_TILE_SIZE, FACE_TILE_SIZE), Image.ANTIALIAS)
+      face_image = face_image.resize((size, size), Image.ANTIALIAS)
 
       return face_image
       
@@ -234,15 +234,16 @@ class FlickrFaceMap:
       self.html_file.write('<a href="'+cell.flickr_photo().page_url()+'">')
       self.html_file.write('<img style="position:absolute;left:'+str(x)+';top:'+str(y)+';" src="'+image_relative_url_dir+'/face.jpg"></a>')
       
-      
+   
+   
 
-   def saveBigImage(self):
+   def saveBigImage(self, border_fraction=0.0):
       bounds = self.get_grid_bounds()
       pixel_width  = bounds['columns'] * FACE_TILE_SIZE
       pixel_height = bounds['rows']    * FACE_TILE_SIZE
 
       self.big_image = Image.new('RGBA', (pixel_width, pixel_height))
-      self.foreach_face_cell(self.place_in_big_image)
+      self.foreach_face_cell(self.place_in_big_image, border_fraction=border_fraction)
 
       out_dir = "data/faceit"
       if not os.path.exists(out_dir):
@@ -252,13 +253,20 @@ class FlickrFaceMap:
       
       print "Saved " + out_path
 
-   def place_in_big_image(self, cell):
-      x = cell.column                        * FACE_TILE_SIZE
-      y = (cell.facemap.rows - cell.row - 1) * FACE_TILE_SIZE
+   def place_in_big_image(self, cell, **kwargs):
+      cell_x = cell.column                        * FACE_TILE_SIZE
+      cell_y = (cell.facemap.rows - cell.row - 1) * FACE_TILE_SIZE
 
-      self.big_image.paste(cell.get_cropped_image(), (x, y))
 
-      print "Pasted at " + str(x) + " " + str(y)
+      border_width = int(FACE_TILE_SIZE * kwargs['border_fraction'])
+      bordered_tile_size = FACE_TILE_SIZE - 2 * border_width
+
+      x = cell_x + border_width
+      y = cell_y + border_width
+
+      self.big_image.paste(cell.get_cropped_image(bordered_tile_size), (x, y))
+
+      #print "Pasted at " + str(x) + " " + str(y)
 
 
    def get_grid_bounds(self):
@@ -293,7 +301,7 @@ class FlickrFaceMap:
       return {'min_column': min_column, 'max_column': max_column, 'max_row': max_row, 'min_row': min_row, 'columns': self.columns, 'rows': self.rows}
 
 
-   def foreach_face_cell(self, callback):
+   def foreach_face_cell(self, callback, **kwargs):
       row_dirs = os.listdir(self.root_face_image_dir)
       r = 0
       for row_name in row_dirs:
@@ -308,5 +316,5 @@ class FlickrFaceMap:
             row    = int(row_name)
 
             cell = FaceCell(cell_dir, row, column, self)
-            callback(cell)
+            callback(cell, **kwargs)
 
