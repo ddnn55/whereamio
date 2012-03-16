@@ -13,11 +13,11 @@ LONGITUDE_COLUMN = 73
 #race_codes = { 'SE_T054_001' : 'Total population',
 race_codes = { 'SE_T054_002' : { 'label': 'White alone', 'color' : '#60b260' },
                'SE_T054_003' : { 'label': 'Black or African American alone', 'color' : '#55bef2' },
-               'SE_T054_004' : { 'label': 'American Indian and Alaska Native alone', 'color' : '#60b260' },
+               'SE_T054_004' : { 'label': 'American Indian and Alaska Native alone', 'color' : '#f4b925' },
                'SE_T054_005' : { 'label': 'Asian alone', 'color' : '#ea4934' },
-               'SE_T054_006' : { 'label': 'Native Hawaiian and Other Pacific Islander alone', 'color' : '#60b260' },
-               'SE_T054_007' : { 'label': 'Some Other Race alone', 'color' : '#60b260' },
-               'SE_T054_008' : { 'label': 'Two or More Races', 'color' : '#60b260' } }
+               'SE_T054_006' : { 'label': 'Native Hawaiian and Other Pacific Islander alone', 'color' : '#f4b925' },
+               'SE_T054_007' : { 'label': 'Some Other Race alone', 'color' : '#f4b925' },
+               'SE_T054_008' : { 'label': 'Two or More Races', 'color' : '#f4b925' } }
 
 class GeoRaceData:
    races = {}
@@ -104,7 +104,7 @@ class GeoRaceData:
          x = fractional_location[0] * width
          y = height - fractional_location[1] * height
 
-         ellipse_radius = 10
+         ellipse_radius = 0.006 * width
          ellipse_left = x - ellipse_radius
          ellipse_right = x + ellipse_radius
          ellipse_top = y + ellipse_radius
