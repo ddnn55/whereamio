@@ -15,46 +15,53 @@ race_codes = { 'SE_T054_001' : 'Total population',
           'SE_T054_007' : 'Total population: Some Other Race alone',
           'SE_T054_008' : 'Total population: Two or More Races' }
 
-def MakeRaceMap(csv_path):
-
+class GeoRaceData:
    races = {}
    samples = []
+   header = []
 
-   csv_file = file(csv_path, "r")
-   race_csv = csv.reader(csv_file, delimiter=',', quotechar='"')
-   header = None
+   def __init__(self, socialexplorer_dot_com_csv_path):
 
-   sys.stderr.write("Parsing CSV...")
-   for line in race_csv:
-      if header == None:
-         header = line
-         for race_code in race_codes:
-            new_race = {}
-            new_race['code'] = race_code
-            new_race['title'] = race_codes[race_code]
-            new_race['csv_column'] = header.index(race_code)
-            races[race_code] = new_race
-      else:
-         for f in range(0, len(line)):
-            pass
-         latitude =  float(line[LATITUDE_COLUMN])
-         longitude = float(line[LONGITUDE_COLUMN])
-         sample = {}
-         sample['location'] = (latitude, longitude)
-         dominant_race_code = None
-         dominant_race_count = 0
-         for race_code in races:
-            race = races[race_code]
-            sample[race_code] = int(line[race['csv_column']])
-            if dominant_race_count < sample[race_code]:
-               dominant_race_count = sample[race_code]
-               dominant_race_code = race_code
-         sample['dominant_race_code'] = dominant_race_code
-         samples.append(sample)
-   sys.stderr.write(" Done.\n")
+      csv_file = file(socialexplorer_dot_com_csv_path, "r")
+      race_csv = csv.reader(csv_file, delimiter=',', quotechar='"')
+      self.header = None
+
+      for line in race_csv:
+	 if self.header == None:
+	    self.header = line
+	    for race_code in race_codes:
+	       new_race = {}
+	       new_race['code'] = race_code
+	       new_race['title'] = race_codes[race_code]
+	       new_race['csv_column'] = self.header.index(race_code)
+	       self.races[race_code] = new_race
+	 else:
+	    latitude =  float(line[LATITUDE_COLUMN])
+	    longitude = float(line[LONGITUDE_COLUMN])
+	    sample = {}
+	    sample['location'] = (latitude, longitude)
+	    dominant_race_code = None
+	    dominant_race_count = 0
+	    for race_code in self.races:
+	       race = self.races[race_code]
+	       sample[race_code] = int(line[race['csv_column']])
+	       if dominant_race_count < sample[race_code]:
+		  dominant_race_count = sample[race_code]
+		  dominant_race_code = race_code
+	    sample['dominant_race_code'] = dominant_race_code
+	    self.samples.append(sample)
+
+   def __str__(self):
+      return str(self.samples)
+   
 
 if __name__ == "__main__":
    if len(sys.argv) < 2:
       print "Usage: " + sys.argv[0] + " geo_race_csv_from_http://www.socialexplorer.com/"
       sys.exit(0)
-   MakeRaceMap(sys.argv[1])
+
+   sys.stderr.write("Parsing CSV...")
+   geo_race_data = GeoRaceData(sys.argv[1])
+   sys.stderr.write(" Done.\n")
+
+   print geo_race_data
