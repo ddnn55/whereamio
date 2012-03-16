@@ -10,14 +10,14 @@ import dgeo
 # file format info
 LATITUDE_COLUMN = 72
 LONGITUDE_COLUMN = 73
-race_codes = { 'SE_T054_001' : 'Total population',
-          'SE_T054_002' : 'Total population: White alone',
-          'SE_T054_003' : 'Total population: Black or African American alone',
-          'SE_T054_004' : 'Total population: American Indian and Alaska Native alone',
-          'SE_T054_005' : 'Total population: Asian alone',
-          'SE_T054_006' : 'Total population: Native Hawaiian and Other Pacific Islander alone',
-          'SE_T054_007' : 'Total population: Some Other Race alone',
-          'SE_T054_008' : 'Total population: Two or More Races' }
+#race_codes = { 'SE_T054_001' : 'Total population',
+race_codes = { 'SE_T054_002' : { 'label': 'White alone', 'color' : '#60b260' },
+               'SE_T054_003' : { 'label': 'Black or African American alone', 'color' : '#55bef2' },
+               'SE_T054_004' : { 'label': 'American Indian and Alaska Native alone', 'color' : '#60b260' },
+               'SE_T054_005' : { 'label': 'Asian alone', 'color' : '#ea4934' },
+               'SE_T054_006' : { 'label': 'Native Hawaiian and Other Pacific Islander alone', 'color' : '#60b260' },
+               'SE_T054_007' : { 'label': 'Some Other Race alone', 'color' : '#60b260' },
+               'SE_T054_008' : { 'label': 'Two or More Races', 'color' : '#60b260' } }
 
 class GeoRaceData:
    races = {}
@@ -64,7 +64,7 @@ class GeoRaceData:
 	    for race_code in self.races:
 	       race = self.races[race_code]
 	       sample[race_code] = int(line[race['csv_column']])
-	       if dominant_race_count < sample[race_code]:
+	       if dominant_race_count < sample[race_code] or dominant_race_code == None:
 		  dominant_race_count = sample[race_code]
 		  dominant_race_code = race_code
 	    sample['dominant_race_code'] = dominant_race_code
@@ -104,7 +104,7 @@ class GeoRaceData:
          x = fractional_location[0] * width
          y = height - fractional_location[1] * height
 
-         ellipse_radius = 5
+         ellipse_radius = 10
          ellipse_left = x - ellipse_radius
          ellipse_right = x + ellipse_radius
          ellipse_top = y + ellipse_radius
@@ -113,7 +113,9 @@ class GeoRaceData:
          if ellipse_right < 0:
             continue
 
-         color = (128, 255, 128)
+         color = race_codes[sample['dominant_race_code']]['color']
+
+         #TODO show pop magnitude somehow? actually blocks might be uniform-ish population counts...
          draw.ellipse((ellipse_left, ellipse_bottom, ellipse_right, ellipse_top), fill=color, outline=color) # damn PIL uses different order, nead TODO better
 
       return image
