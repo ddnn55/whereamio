@@ -237,7 +237,7 @@ class FlickrFaceMap:
    
    
 
-   def save_big_image(self, border_fraction=0.0):
+   def get_big_image(self, border_fraction=0.0):
       bounds = self.get_grid_bounds()
       pixel_width  = bounds['columns'] * FACE_TILE_SIZE
       pixel_height = bounds['rows']    * FACE_TILE_SIZE
@@ -245,13 +245,15 @@ class FlickrFaceMap:
       self.big_image = Image.new('RGBA', (pixel_width, pixel_height))
       self.foreach_face_cell(self.place_in_big_image, border_fraction=border_fraction)
 
-      out_dir = "data/faceit"
-      if not os.path.exists(out_dir):
-	 os.makedirs(out_dir)
-      out_path = out_dir + "/face_" + self.session_name + "_" + self.session_timestamp + ".jpg"
-      self.big_image.save(out_path)
+      return self.big_image
+
+      #out_dir = "data/faceit"
+      #if not os.path.exists(out_dir):
+	# os.makedirs(out_dir)
+      #out_path = out_dir + "/face_" + self.session_name + "_" + self.session_timestamp + ".jpg"
+      #self.big_image.save(out_path)
       
-      print "Saved " + out_path
+      #print "Saved " + out_path
 
 
    def place_in_big_image(self, cell, **kwargs):

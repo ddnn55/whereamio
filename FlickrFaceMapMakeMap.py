@@ -8,9 +8,10 @@ import dpy
 import flickrfacemap
 import georacedata
 
-if len(sys.argv) < 4:
-   print "\nUsage: " + sys.argv[0] + " name timestamp social_explorer_csv [tile_border_fraction]\n\nMaps:\n-----------"
-   
+if len(sys.argv) < 9:
+   # TODO store lat lng bounds in session, yessir.
+   print "\nUsage: " + sys.argv[0] + " name timestamp social_explorer_csv tile_border_fraction left right top bottom \n\nMaps:\n-----------"
+
    task_queues_directory = "data/tasks/flickr_geo_face/"
    for root, dirs, files in os.walk(task_queues_directory):
       for d in dirs:
@@ -29,15 +30,22 @@ try:
 except:
    pass
 
-census_data = True
-
 facemap = flickrfacemap.FlickrFaceMap(name, timestamp)
-facemap.save_big_image(border_fraction)
+face_image = facemap.get_big_image(border_fraction)
 
-race_out_dir = "data/facerace"
-race_plot_path = race_out_dir + "/race_" + name + "_" + timestamp + ".jpg"
-dpy.ensure_dir(race_out_dir)
+left   = float(sys.argv[5])
+right  = float(sys.argv[6])
+top    = float(sys.argv[7])
+bottom = float(sys.argv[8])
+
 racemap = georacedata.GeoRaceData(socialexplorer_csv)
-race_image = racemap.get_image()
-race_image.save(race_plot_path)
-print "Saved race plot to " + race_plot_path
+race_image = racemap.get_image(face_image.size[0], (left, right, top, bottom))
+
+race_image.paste(face_image, (0, 0), face_image) # need to use the image as mask too if you want to use its alpha channel, cuz this API is retarded.
+
+facerace_out_dir = "data/facerace"
+dpy.ensure_dir(facerace_out_dir)
+facerace_path = facerace_out_dir + "/facerace_" + name + "_" + timestamp + ".jpg"
+race_image.save(facerace_path)
+#face_image.save(facerace_path)
+print "Saved face race map to " + facerace_path

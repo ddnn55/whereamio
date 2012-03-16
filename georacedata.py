@@ -3,7 +3,7 @@ import os
 import sys
 import csv
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageColor
 
 import dgeo
 
@@ -76,29 +76,49 @@ class GeoRaceData:
    def degree_height(self):
       return self.max_lat - self.min_lat;
 
-   def latlng_to_fractional(self, latlng):
-      return ( (latlng[1] - self.min_lng) / self.degree_width(),
-               (latlng[0] - self.min_lat) / self.degree_height() )
-
-   def __str__(self):
-      return str(self.samples)
+   def latlng_to_fractional(self, latlng, bounds=None):
+      (left, right, top, bottom) = (None, None, None, None)
+      if bounds != None:
+         left = bounds[0]
+         right = bounds[1]
+         top = bounds[2]
+         bottom = bounds[3]
+      else:
+         left = self.min_lng
+         right = self.max_lng
+         top = self.max_lat
+         bottom = self.min_lat
+      degree_width  = right - left
+      degree_height = top - bottom
+      return ( (latlng[1] - left)   / degree_width,
+               (latlng[0] - bottom) / degree_height )
    
-   def get_image(self, width=512):
-      aspect = dgeo.ok_projection_aspect(self.min_lng, self.max_lng, self.max_lat, self.min_lat)
+   def get_image(self, width, bounds):
+      aspect = dgeo.ok_projection_aspect(bounds[0], bounds[1], bounds[2], bounds[3])
       height = int(float(width) / aspect)
       image = Image.new('RGBA', (width, height))
       draw = ImageDraw.Draw(image)
 
       for sample in self.samples:
-         fractional_location = self.latlng_to_fractional(sample['latlng'])
+         fractional_location = self.latlng_to_fractional(sample['latlng'], bounds)
          x = fractional_location[0] * width
          y = height - fractional_location[1] * height
-         draw.point((x, y))
-         
+
+         ellipse_radius = 5
+         ellipse_left = x - ellipse_radius
+         ellipse_right = x + ellipse_radius
+         ellipse_top = y + ellipse_radius
+         ellipse_bottom = y - ellipse_radius
+
+         if ellipse_right < 0:
+            continue
+
+         color = (128, 255, 128)
+         draw.ellipse((ellipse_left, ellipse_bottom, ellipse_right, ellipse_top), fill=color, outline=color) # damn PIL uses different order, nead TODO better
 
       return image
       
-
+# if this script is run by itself (not included from another python file)
 if __name__ == "__main__":
    if len(sys.argv) < 2:
       print "Usage: " + sys.argv[0] + " geo_race_csv_from_http://www.socialexplorer.com/"
@@ -108,4 +128,6 @@ if __name__ == "__main__":
    geo_race_data = GeoRaceData(sys.argv[1])
    sys.stderr.write(" Done.\n")
 
-   print geo_race_data
+   image = geo_race_data.get_image()
+   image.save("plot.jpg")
+   print "Saved plot.jpg"
