@@ -3,6 +3,10 @@ import os
 import sys
 import csv
 
+from PIL import Image, ImageDraw
+
+import dgeo
+
 # file format info
 LATITUDE_COLUMN = 72
 LONGITUDE_COLUMN = 73
@@ -19,6 +23,11 @@ class GeoRaceData:
    races = {}
    samples = []
    header = []
+
+   min_lat = None
+   max_lat = None
+   min_lng = None
+   max_lng = None
 
    def __init__(self, socialexplorer_dot_com_csv_path):
 
@@ -38,8 +47,18 @@ class GeoRaceData:
 	 else:
 	    latitude =  float(line[LATITUDE_COLUMN])
 	    longitude = float(line[LONGITUDE_COLUMN])
+            if self.min_lat == None:
+	       self.min_lat = latitude
+	       self.max_lat = latitude
+	       self.min_lng = longitude
+	       self.max_lng = longitude
+            else:
+	       self.min_lat = min(self.min_lat, latitude)
+	       self.max_lat = max(self.max_lat, latitude)
+	       self.min_lng = min(self.min_lng, longitude)
+	       self.max_lng = max(self.max_lng, longitude)
 	    sample = {}
-	    sample['location'] = (latitude, longitude)
+	    sample['latlng'] = (latitude, longitude)
 	    dominant_race_code = None
 	    dominant_race_count = 0
 	    for race_code in self.races:
@@ -51,9 +70,34 @@ class GeoRaceData:
 	    sample['dominant_race_code'] = dominant_race_code
 	    self.samples.append(sample)
 
+   def degree_width(self):
+      return self.max_lng - self.min_lng;
+
+   def degree_height(self):
+      return self.max_lat - self.min_lat;
+
+   def latlng_to_fractional(self, latlng):
+      return ( (latlng[1] - self.min_lng) / self.degree_width(),
+               (latlng[0] - self.min_lat) / self.degree_height() )
+
    def __str__(self):
       return str(self.samples)
    
+   def get_image(self, width=512):
+      aspect = dgeo.ok_projection_aspect(self.min_lng, self.max_lng, self.max_lat, self.min_lat)
+      height = int(float(width) / aspect)
+      image = Image.new('RGBA', (width, height))
+      draw = ImageDraw.Draw(image)
+
+      for sample in self.samples:
+         fractional_location = self.latlng_to_fractional(sample['latlng'])
+         x = fractional_location[0] * width
+         y = height - fractional_location[1] * height
+         draw.point((x, y))
+         
+
+      return image
+      
 
 if __name__ == "__main__":
    if len(sys.argv) < 2:

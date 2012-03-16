@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from geogrid import GeoGrid
+from dgeo import GeoGrid
 
 nyc = GeoGrid(-74.034805, -73.891296, 40.800296, 40.66866, 10)
 html = """

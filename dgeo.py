@@ -34,6 +34,19 @@ def distance_on_spherical_earth(lat1, long1, lat2, long2):
     # in your favorite set of units to get length.
     return arc * 6378100
 
+def ok_projection_aspect(left, right, top, bottom):
+   degree_width  = (right - left)
+   degree_height = (top - bottom)
+
+   center_x = left + (right - left) / 2.0
+   center_y = bottom + (top - bottom) / 2.0
+
+   meter_width  = distance_on_spherical_earth(center_y, left, center_y, right)
+   meter_height = distance_on_spherical_earth(bottom, center_x, top, center_x)
+
+   return meter_width / meter_height
+   
+
 class GeoGridCell:
 
    def __init__(self, left, right, top, bottom, row, column):

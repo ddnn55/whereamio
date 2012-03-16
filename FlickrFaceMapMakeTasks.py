@@ -6,7 +6,7 @@ import time
 import calendar
 import json
 
-from geogrid import GeoGrid
+from dgeo import GeoGrid
 
 if(len(sys.argv) < 7):
    print "Usage: " + sys.argv[0] + " left right top bottom columns name"
