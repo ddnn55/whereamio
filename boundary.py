@@ -12,7 +12,8 @@ r = shapefile.Reader("data/USA_adm/USA_adm2")
 
 class Boundary:
   def __init__(self, state, keys, shapefile_reader):
-    
+    self.name = state + "-" + str(keys)
+
     self.left = None
     self.right = None
     self.top = None
@@ -56,8 +57,14 @@ class Boundary:
     for plot_points in plot_shapes:
       draw.line(plot_points, fill = 255)
 
-    plot.save("data/debug/nyc.jpg")
+    plot.save("data/debug/" + self.name + ".jpg")
 
 if __name__ == "__main__":
   nyc = Boundary("New York", ["New York", "Queens", "Bronx", "Kings", "Richmond"], r)
   nyc.plot()
+  la = Boundary("California", ["Los Angeles"], r)
+  la.plot()
+  atl = Boundary("Georgia", ["Fulton"], r)
+  atl.plot()
+  chi = Boundary("Illinois", ["Cook", "DuPage"], r)
+  chi.plot()
