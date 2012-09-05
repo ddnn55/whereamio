@@ -3,47 +3,61 @@
 import shapefile
 import Image, ImageDraw
 
-PLOT_WIDTH = 512
+PLOT_WIDTH = 1024
 
 r = shapefile.Reader("data/USA_adm/USA_adm2")
 #sr = r.shapeRecords()
 #sr_test = sr[10]
 #print sr_test.shape.points
 
-left = None
-right = None
-top = None
-bottom = None
+class Boundary:
+  def __init__(self, state, keys, shapefile_reader):
+    
+    self.left = None
+    self.right = None
+    self.top = None
+    self.bottom = None
 
-# find nyc
-nyc = None
-for sr in r.shapeRecords():
-  if sr.record[4] == "New York" and sr.record[6] == "New York":
-    nyc = sr
+    self.records = []
+    for sr in r.shapeRecords():
+      if sr.record[4] == state and sr.record[6] in keys:
+        self.records.append(sr)
+        print sr.record
 
-# calculate bounding box
-left = nyc.shape.points[0][0]
-right = nyc.shape.points[0][0]
-top = nyc.shape.points[0][1]
-bottom = nyc.shape.points[0][1]
-for point in nyc.shape.points:
-  left = min(left, point[0])
-  right = max(right, point[0])
-  bottom = min(bottom, point[1])
-  top = max(top, point[1])
-print (left, right, bottom, top)
+    # calculate bounding box
+    self.left = self.records[0].shape.points[0][0]
+    self.right = self.records[0].shape.points[0][0]
+    self.top = self.records[0].shape.points[0][1]
+    self.bottom = self.records[0].shape.points[0][1]
+    for record in self.records:
+      for point in record.shape.points:
+        self.left = min(self.left, point[0])
+        self.right = max(self.right, point[0])
+        self.bottom = min(self.bottom, point[1])
+        self.top = max(self.top, point[1])
+    print (self.left, self.right, self.bottom, self.top)
 
-# plot shape
-llwidth = right - left
-llheight = top - bottom
-aspect = llwidth / llheight
-height = int(PLOT_WIDTH / aspect)
-plot = Image.new("L", (PLOT_WIDTH, height))
-# convert to plot coordinates
-plot_points = map(lambda p: ( PLOT_WIDTH * (p[0] - left) / llwidth, height - height * (p[1] - bottom) / llheight), nyc.shape.points)
+  def llwidth(self):
+    return self.right - self.left
 
-draw = ImageDraw.Draw(plot)
-previous_point = nyc.shape.points[0]
-draw.line(plot_points, fill = 128)
+  def llheight(self):
+    return self.top - self.bottom
 
-plot.save("data/debug/nyc.jpg")
+  def plot(self):
+    aspect = self.llwidth() / self.llheight()
+    height = int(1.4 * PLOT_WIDTH / aspect) # TODO 1.4 is complete hack, do a semi decent projection.
+    plot = Image.new("L", (PLOT_WIDTH, height))
+    # convert to plot coordinates
+    plot_shapes = []
+    for record in self.records:
+      plot_shapes.append(map(lambda p: ( PLOT_WIDTH * (p[0] - self.left) / self.llwidth(), height - height * (p[1] - self.bottom) / self.llheight()), record.shape.points))
+
+    draw = ImageDraw.Draw(plot)
+    for plot_points in plot_shapes:
+      draw.line(plot_points, fill = 255)
+
+    plot.save("data/debug/nyc.jpg")
+
+if __name__ == "__main__":
+  nyc = Boundary("New York", ["New York", "Queens", "Bronx", "Kings", "Richmond"], r)
+  nyc.plot()
