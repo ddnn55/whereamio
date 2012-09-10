@@ -9,22 +9,26 @@ import json
 #import dpy
 import boundary
 from dgeo import GeoGrid
+import Flickr
 
-if(len(sys.argv) < 4):
-   print "Usage: " + sys.argv[0] + " state county year"
+if(len(sys.argv) < 2):
+   print "Usage: " + sys.argv[0] + " mine_path"
    sys.exit(0)
 
-state    = sys.argv[1]
-county   = sys.argv[2]
-year  = int(sys.argv[3])
-#right   = float(sys.argv[4])
-#name    = sys.argv[6]
+mine_path = sys.argv[1]
+
+metadata = json.load(file(mine_path + "/metadata.json"))
+bbox = metadata['bbox']
+
+mine = Flickr.GeoMine(bbox, 2011)
+while mine.might_be_truncated():
+   children = list(mine.children())
+   mine = children[2]
 
 
-def make_task(cell):
-   task_filename = str(cell.row)+"_"+str(cell.column)+".json"
-   task_file = open(task_queue_directory+"/"+task_filename, "w")
-   task_file.write(json.dumps(cell.toDict()))
+exit()
+
+
 
 boundary = boundary.Boundary(state, county)
 
