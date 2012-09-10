@@ -5,13 +5,14 @@ import Image, ImageDraw
 
 PLOT_WIDTH = 1024
 
-r = shapefile.Reader("data/USA_adm/USA_adm2")
 #sr = r.shapeRecords()
 #sr_test = sr[10]
 #print sr_test.shape.points
 
+r = shapefile.Reader("data/USA_adm/USA_adm2")
+
 class Boundary:
-  def __init__(self, state, keys, shapefile_reader):
+  def __init__(self, state, keys):
     self.name = state + "-" + str(keys)
 
     self.left = None
@@ -37,6 +38,14 @@ class Boundary:
         self.bottom = min(self.bottom, point[1])
         self.top = max(self.top, point[1])
     print (self.left, self.right, self.bottom, self.top)
+
+  def bbox(self):
+    bbox = dict()
+    bbox['left']   = self.left
+    bbox['right']  = self.right
+    bbox['top']    = self.top
+    bbox['bottom'] = self.bottom
+    return bbox
 
   def llwidth(self):
     return self.right - self.left
