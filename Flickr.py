@@ -92,7 +92,7 @@ class Flickr:
       (token, frob) = self.flickr.get_token_part_one(perms='read')
       if not token: raw_input("Press ENTER after you authorized this program")
       self.flickr.get_token_part_two((token, frob))
-      print "Authed to Flickr"
+      sys.stderr.write("Authed to Flickr\n")
 
    def query_bbox_and_upload_time_segment(self, bbox, min_upload_time, max_upload_time, limit):
       bbox_string = "%s,%s,%s,%s" % (bbox['left'], bbox['bottom'], bbox['right'], bbox['top'])
