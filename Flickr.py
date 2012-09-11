@@ -21,12 +21,11 @@ flickr = None
 
 class GeoMine:
 
-   def __init__(self, bbox, year):
+   def __init__(self, bbox, min_upload_time, max_upload_time):
       self.bbox = bbox
-      self.year = year # TODO make low/high constructor instead
-      self.min_upload_time = time.mktime(datetime.datetime(year, 1,   1,  0,  0,  0).timetuple())
-      self.max_upload_time = time.mktime(datetime.datetime(year, 12, 30, 23, 59, 59).timetuple())
-
+      #self.year = year # TODO make low/high constructor instead
+      self.min_upload_time = min_upload_time
+      self.max_upload_time = max_upload_time
 
    def llwidth(self):
       return self.bbox['right'] - self.bbox['left']
@@ -49,7 +48,7 @@ class GeoMine:
             child_bbox['right'] = child_bbox['left'] + (self.llwidth() / 2)
             child_bbox['bottom'] = self.bbox['bottom'] + r * (self.llheight() / 2)
             child_bbox['top'] = child_bbox['bottom'] + (self.llheight() / 2)
-            yield GeoMine(child_bbox, self.year)
+            yield GeoMine(child_bbox, self.min_upload_time, self.max_upload_time)
 
 
 

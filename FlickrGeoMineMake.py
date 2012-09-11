@@ -5,18 +5,19 @@ import os
 import time
 import calendar
 import json
+import datetime
 
 #import dpy
 import boundary
 from dgeo import GeoGrid
 
-if(len(sys.argv) < 4):
-   print "Usage: " + sys.argv[0] + " state county year"
+if(len(sys.argv) < 3):
+   print "Usage: " + sys.argv[0] + " state county"
    sys.exit(0)
 
 state    = sys.argv[1]
 county   = sys.argv[2]
-year  = int(sys.argv[3])
+#year  = int(sys.argv[3])
 #right   = float(sys.argv[4])
 #name    = sys.argv[6]
 
@@ -34,6 +35,9 @@ if not os.path.exists(mine_directory):
 
 metadata = dict()
 metadata["bbox"] = boundary.bbox()
+metadata["min_upload_time"] = time.mktime(datetime.datetime(2011, 7, 1, 0, 0, 0).timetuple())
+metadata["max_upload_time"] = time.mktime(datetime.datetime(2011, 8, 1, 0, 0, 0).timetuple())
+
 metadata_file = open(mine_directory+"/metadata.json", "w")
 metadata_file.write(json.dumps(metadata))
 
