@@ -35,9 +35,10 @@ class GeoMine:
       return self.bbox['top'] - self.bbox['bottom']
 
    def might_be_truncated(self):
-      self.results = flickr.query_bbox_and_upload_time_segment(self.bbox, self.min_upload_time, self.max_upload_time)
+      limit = 200
+      self.results = flickr.query_bbox_and_upload_time_segment(self.bbox, self.min_upload_time, self.max_upload_time, limit)
       print str(self.bbox) + ": " + str(len(self.results))
-      return True
+      return len(self.results) >= limit/2
 
    def children(self):
       children = list()
@@ -94,9 +95,9 @@ class Flickr:
       self.flickr.get_token_part_two((token, frob))
       print "Authed to Flickr"
 
-   def query_bbox_and_upload_time_segment(self, bbox, min_upload_time, max_upload_time):
+   def query_bbox_and_upload_time_segment(self, bbox, min_upload_time, max_upload_time, limit):
       bbox_string = "%s,%s,%s,%s" % (bbox['left'], bbox['bottom'], bbox['right'], bbox['top'])
-      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date=min_upload_time, max_upload_date=max_upload_time, per_page=200, extras="geo", page=0)
+      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date=min_upload_time, max_upload_date=max_upload_time, per_page=limit, extras="geo", page=0)
       photos = []
       for photoxml in photos_response[0]:
          photo = FlickrPhoto(xml=photoxml)

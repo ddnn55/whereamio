@@ -14,7 +14,6 @@ import math
 from PIL import Image
 import glob
 
-
 pp = pprint.PrettyPrinter(indent=3)
 
 class FlickrPhoto:
