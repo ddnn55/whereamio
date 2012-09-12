@@ -15,17 +15,22 @@ import math
 from PIL import Image
 import glob
 
+import dpy
+
 pp = pprint.PrettyPrinter(indent=3)
 
 flickr = None
 
-class GeoMine:
+class GeoMine: # TODO separate top level mine and this (sub mine)
 
    def __init__(self, bbox, min_upload_time, max_upload_time):
       self.bbox = bbox
       #self.year = year # TODO make low/high constructor instead
       self.min_upload_time = min_upload_time
       self.max_upload_time = max_upload_time
+      
+      self.limit = 250
+      self.results = None
 
    def llwidth(self):
       return self.bbox['right'] - self.bbox['left']
@@ -34,10 +39,13 @@ class GeoMine:
       return self.bbox['top'] - self.bbox['bottom']
 
    def might_be_truncated(self):
-      limit = 200
-      self.results = flickr.query_bbox_and_upload_time_segment(self.bbox, self.min_upload_time, self.max_upload_time, limit)
+      self.assure_query_ran()
       print str(self.bbox) + ": " + str(len(self.results))
-      return len(self.results) >= limit/2
+      return len(self.results) >= int(0.9 * self.limit)
+   
+   def assure_query_ran(self):
+      if self.results == None:
+         self.results = flickr.query_bbox_and_upload_time_segment(self.bbox, self.min_upload_time, self.max_upload_time, self.limit)
 
    def children(self):
       children = list()
@@ -49,7 +57,17 @@ class GeoMine:
             child_bbox['bottom'] = self.bbox['bottom'] + r * (self.llheight() / 2)
             child_bbox['top'] = child_bbox['bottom'] + (self.llheight() / 2)
             yield GeoMine(child_bbox, self.min_upload_time, self.max_upload_time)
-
+   
+   def store_photos_and_metadata(self):
+      self.assure_query_ran()
+      for photo in self.results:
+         try:
+            photo.store_medium_and_metadata()
+	 except:
+	    # wait a bit (maybe Flickr is rate limiting us), and skip this photo (maybe problem with this photo)
+            with open(mine_path + "data/flickr_mine/error.log", "a") as logfile:
+               logfile.write(photo.flickr_locator_string() + "\n")
+	    time.sleep(4)
 
 
 class FlickrPhoto:
@@ -59,9 +77,15 @@ class FlickrPhoto:
       self.locator_string = locator_string
       self.flickr = flickr
 
+   def image_base_url(self):
+      base_url = "http://farm%s.staticflickr.com/%s/%s_%s_" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
+      return base_url
+
    def big_url(self):
-      url = "http://farm%s.staticflickr.com/%s/%s_%s_b.jpg" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
-      return url
+      return self.image_base_url() + "b.jpg"
+
+   def medium_url(self):
+      return self.image_base_url() + "m.jpg"
 
    def page_url(self):
       (farm, server, photo_id, secret) = self.locator_string.split('_')
@@ -73,12 +97,35 @@ class FlickrPhoto:
 
    def flickr_locator_string(self):
       return "%s_%s_%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
+   
+   def flickr_locator_path(self):
+      return "%s/%s/%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
       
    def saveToDirectory(self, path):
       image_response = urllib2.urlopen(self.big_url())
       image_file = open(path + "/" + self.flickr_locator_string() + ".jpg", "w")
       image_file.write(image_response.read())
       image_file.close()
+
+   def save_image_to_path(self, path):
+      image_response = urllib2.urlopen(self.big_url())
+      image_file = open(path, "w")
+      image_file.write(image_response.read())
+      image_file.close()
+
+   def save_metadata_to_path(self, path):
+      metadata_file = open(path, "w")
+      metadata_file.write(json.dumps(self.xml.attrib))
+      metadata_file.close()
+
+   def store_medium_and_metadata(self):
+      image_dir_path = "data/flickr_mirror/" + self.flickr_locator_path()
+      dpy.ensure_dir(image_dir_path)
+      image_path = image_dir_path + "/b.jpg"
+      metadata_path = image_dir_path + "/metadata.json"
+      self.save_image_to_path(image_path)
+      self.save_metadata_to_path(metadata_path)
+      print "Stored image/metadata " + image_dir_path
       
 
 class Flickr:
@@ -95,8 +142,9 @@ class Flickr:
       sys.stderr.write("Authed to Flickr\n")
 
    def query_bbox_and_upload_time_segment(self, bbox, min_upload_time, max_upload_time, limit):
+      all_extras = "description,license,date_upload,date_taken,owner_name,icon_server,original_format,last_update,geo,tags,machine_tags,o_dims,views,media,path_alias"
       bbox_string = "%s,%s,%s,%s" % (bbox['left'], bbox['bottom'], bbox['right'], bbox['top'])
-      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date=min_upload_time, max_upload_date=max_upload_time, per_page=limit, extras="geo", page=0)
+      photos_response = self.flickr.photos_search(bbox=bbox_string, min_upload_date=min_upload_time, max_upload_date=max_upload_time, per_page=limit, extras=all_extras, page=0)
       photos = []
       for photoxml in photos_response[0]:
          photo = FlickrPhoto(xml=photoxml)

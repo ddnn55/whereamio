@@ -49,5 +49,6 @@ while r.llen(unfinished_mines_key) > 0:
    else:
 #     download photos (and their metadata) in mine, mark mine finished
       print "Reached quadtree leaf with " + str(len(mine.results)) + " photos"
+      mine.store_photos_and_metadata()
    pipe.lpop(unfinished_mines_key)
    pipe.execute()

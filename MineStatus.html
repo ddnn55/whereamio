@@ -17,38 +17,47 @@
         var mapOptions = {
           zoom: 12,
           center: center,
-          mapTypeId: google.maps.MapTypeId.TERRAIN
+          mapTypeId: google.maps.MapTypeId.ROADMAP
         };
 
         var map = new google.maps.Map(document.getElementById('map_canvas'), mapOptions);
 
-$.getJSON('/mines.json', function(data) {
-  var items = [];
+        var rectangles = [];
+
+function update() {
+ $.getJSON('/mines.json', function(data) {
+
+  for(r in rectangles)
+  {
+    rectangles[r].setMap(null);
+  }
+  rectangles = [];
 
   $.each(data, function(key, val) {
-    rectangle = new google.maps.Rectangle();
+    var rectangle = new google.maps.Rectangle();
     var sw = new google.maps.LatLng(val['bottom'], val['left']);
     var ne = new google.maps.LatLng(val['top'], val['right']);
     var rectBounds = new google.maps.LatLngBounds(sw, ne);
     var rectOptions = {
             strokeColor: '#FF0000',
             strokeOpacity: 0.8,
-            strokeWeight: 2,
+            strokeWeight: 1,
             //fillColor: '#FF0000',
             //fillOpacity: 0.35,
             map: map,
             bounds: rectBounds
           };
     rectangle.setOptions(rectOptions);
-
-    items.push('<li id="' + key + '">' + val['left'] + '</li>');
+    rectangles.push(rectangle);
   });
 
-  $('<ul/>', {
-    'class': 'my-new-list',
-    html: items.join('')
-  }).appendTo('body');
-});
+  setTimeout(update, 5000);
+  console.log("rectangle count: " + rectangles.length);
+
+ });
+}
+
+       update();
 
       };
     </script>
