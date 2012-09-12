@@ -23,14 +23,21 @@ flickr = None
 
 class GeoMine: # TODO separate top level mine and this (sub mine)
 
-   def __init__(self, bbox, min_upload_time, max_upload_time):
-      self.bbox = bbox
+   def __init__(self, params):
+      self.bbox = params['bbox']
       #self.year = year # TODO make low/high constructor instead
-      self.min_upload_time = min_upload_time
-      self.max_upload_time = max_upload_time
+      self.min_upload_time = params['min_upload_time']
+      self.max_upload_time = params['max_upload_time']
       
       self.limit = 250
       self.results = None
+
+   def toJSON(self):
+      params = dict()
+      params['bbox'] = self.bbox
+      params['min_upload_time'] = self.min_upload_time
+      params['max_upload_time'] = self.max_upload_time
+      return json.dumps(params);
 
    def llwidth(self):
       return self.bbox['right'] - self.bbox['left']
@@ -48,15 +55,35 @@ class GeoMine: # TODO separate top level mine and this (sub mine)
          self.results = flickr.query_bbox_and_upload_time_segment(self.bbox, self.min_upload_time, self.max_upload_time, self.limit)
 
    def children(self):
+      MINIMUM_QUAD_SIZE = 0.0001
       children = list()
-      for r in range(0, 2):
-         for c in range(0, 2):
-            child_bbox = dict()
-            child_bbox['left']  = self.bbox['left'] + c * (self.llwidth() / 2)
-            child_bbox['right'] = child_bbox['left'] + (self.llwidth() / 2)
-            child_bbox['bottom'] = self.bbox['bottom'] + r * (self.llheight() / 2)
-            child_bbox['top'] = child_bbox['bottom'] + (self.llheight() / 2)
-            yield GeoMine(child_bbox, self.min_upload_time, self.max_upload_time)
+      if self.llwidth() > MINIMUM_QUAD_SIZE and self.llheight() > MINIMUM_QUAD_SIZE:
+         for r in range(0, 2):
+            for c in range(0, 2):
+               child_bbox = dict()
+               child_bbox['left']  = self.bbox['left'] + c * (self.llwidth() / 2)
+               child_bbox['right'] = child_bbox['left'] + (self.llwidth() / 2)
+               child_bbox['bottom'] = self.bbox['bottom'] + r * (self.llheight() / 2)
+               child_bbox['top'] = child_bbox['bottom'] + (self.llheight() / 2)
+	       params = dict();
+	       params['bbox'] = child_bbox
+	       params['min_upload_time'] = self.min_upload_time
+	       params['max_upload_time'] = self.max_upload_time
+               yield GeoMine(params)
+      else:
+         print "Subdivided time"
+         middle_upload_time = self.min_upload_time / 2 + self.max_upload_time / 2
+	 params = dict();
+	 params['bbox'] = self.bbox
+	 params['min_upload_time'] = self.min_upload_time
+	 params['max_upload_time'] = middle_upload_time
+         yield GeoMine(params)
+	 params = dict();
+	 params['bbox'] = self.bbox
+	 params['min_upload_time'] = middle_upload_time
+	 params['max_upload_time'] = self.max_upload_time
+         yield GeoMine(params)
+	    
    
    def store_photos_and_metadata(self):
       self.assure_query_ran()
@@ -123,9 +150,13 @@ class FlickrPhoto:
       dpy.ensure_dir(image_dir_path)
       image_path = image_dir_path + "/b.jpg"
       metadata_path = image_dir_path + "/metadata.json"
-      self.save_image_to_path(image_path)
-      self.save_metadata_to_path(metadata_path)
-      print "Stored image/metadata " + image_dir_path
+
+      if not os.path.exists(image_path) and not os.path.exists(metadata_path):
+         self.save_image_to_path(image_path)
+         self.save_metadata_to_path(metadata_path)
+         print "Stored image/metadata " + image_dir_path
+      else:
+         print "Already stored " + image_dir_path
       
 
 class Flickr:

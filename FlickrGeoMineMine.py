@@ -31,7 +31,7 @@ unfinished_mines_key = mine_path + '_unfinished_mines'
 started_mining_key = mine_path + '_started_mining'
 if r.get(started_mining_key) == None:
    print "Initializing " + mine_path + " in Redis ..."
-   unfinished_mines_value = json.dumps(bbox)
+   unfinished_mines_value = json.dumps(metadata)
    pipe = r.pipeline(transaction=True)
    pipe.rpush(unfinished_mines_key, unfinished_mines_value)
    pipe.set(started_mining_key, True)
@@ -40,12 +40,12 @@ if r.get(started_mining_key) == None:
 # for unfinished mines in mine list:
 while r.llen(unfinished_mines_key) > 0:
    pipe = r.pipeline(transaction=True)
-   unfinished_mine_bbox = json.loads(r.lindex(unfinished_mines_key, 0))
-   mine = Flickr.GeoMine(unfinished_mine_bbox, min_upload_time, max_upload_time)
+   unfinished_mine_params = json.loads(r.lindex(unfinished_mines_key, 0))
+   mine = Flickr.GeoMine(unfinished_mine_params)
    if mine.might_be_truncated():
 #     break mine into children
       for child in mine.children():
-         pipe.rpush(unfinished_mines_key, json.dumps(child.bbox))
+         pipe.rpush(unfinished_mines_key, child.toJSON())
    else:
 #     download photos (and their metadata) in mine, mark mine finished
       print "Reached quadtree leaf with " + str(len(mine.results)) + " photos"

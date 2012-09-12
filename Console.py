@@ -30,7 +30,7 @@ max_upload_time = metadata['max_upload_time']
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 # if mine list does not exist, create it (with single top level quad)
 unfinished_mines_key = mine_path + '_unfinished_mines'
-
+# TODO consolodate keys into single representation 
 
 #for mine in unfinished_mines:
    #print mine
@@ -40,6 +40,8 @@ unfinished_mines_key = mine_path + '_unfinished_mines'
         
 urls = (
     '/mines.json', 'mines',
+    '/create_mine', 'create_mine',
+    '/delete_all_mines', 'delete_all_mines',
     '/(.*)', 'status'
 )
 app = web.application(urls, globals())
@@ -48,7 +50,17 @@ class status:
     def GET(self, name):
         if not name: 
             name = 'World'
-        return file("MineStatus.html")
+        return file("static/Console.html")
+
+class create_mine:
+    def POST(self):
+        data = web.data()
+        r.rpush(unfinished_mines_key, data)
+	print data
+
+class delete_all_mines:
+    def GET(self):
+        r.delete(unfinished_mines_key)
 
 class mines:
     def GET(self):
