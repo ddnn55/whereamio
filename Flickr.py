@@ -65,7 +65,7 @@ class GeoMine: # TODO separate top level mine and this (sub mine)
             photo.store_medium_and_metadata()
 	 except:
 	    # wait a bit (maybe Flickr is rate limiting us), and skip this photo (maybe problem with this photo)
-            with open(mine_path + "data/flickr_mine/error.log", "a") as logfile:
+            with open("data/flickr_mine/error.log", "a") as logfile:
                logfile.write(photo.flickr_locator_string() + "\n")
 	    time.sleep(4)
 
