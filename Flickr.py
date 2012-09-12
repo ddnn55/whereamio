@@ -14,6 +14,7 @@ import datetime
 import math
 from PIL import Image
 import glob
+import subprocess
 
 import dpy
 
@@ -206,5 +207,15 @@ class Flickr:
    def get_photo_user_id(self, photo_id, secret):
       info_response = self.flickr.photos_getInfo(photo_id=photo_id, secret=secret) #omg will this work
       return info_response.find('photo').find('owner').attrib['nsid']
+
+   def mirror_image_count(self):
+      self._mirror_image_count = 0
+      def visit(self, dirname, names):
+         #print dirname
+	 for name in names:
+	    if name[-4:] == "json":
+	       self._mirror_image_count = self._mirror_image_count + 1
+      os.path.walk("data/flickr_mirror", visit, self)
+      return self._mirror_image_count
 
 flickr = Flickr()

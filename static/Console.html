@@ -33,6 +33,8 @@ function date_string_to_timestamp(str)
         var rectangles = [];
 
 function update() {
+ //$('#image_count').load('/image_count');
+
  $.getJSON('/mines.json', function(data) {
 
   for(r in rectangles)
@@ -47,7 +49,6 @@ function update() {
   var count = 0;
   var rectsString = "";
   $.each(data, function(key, val) {
-    console.log(val);
 
     var rectangle = new google.maps.Rectangle();
     var sw = new google.maps.LatLng(val['bbox']['bottom'], val['bbox']['left']);
@@ -66,8 +67,9 @@ function update() {
     rectangles.push(rectangle);
 
     rectsString += sw.toString() + "<br>";
-
   });
+    
+  $('#delete_mines').html("Delete All "+rectangles.length+" Mines");
 
   $('#rectList').html(rectsString);
 
@@ -159,6 +161,9 @@ function update() {
           <div id="rect"></div>
 	  <input type="text" id="min_upload_time"></p>
 	  <input type="text" id="max_upload_time"></p>
+       </div>
+       <div style="border:2px solid purple;" id="images">
+          <span id="image_count"></span> Images
        </div>
        <div style="border:2px solid blue;" id="rectListControl">
 	  <button id="delete_mines">Delete All Mines</button>

@@ -42,6 +42,7 @@ urls = (
     '/mines.json', 'mines',
     '/create_mine', 'create_mine',
     '/delete_all_mines', 'delete_all_mines',
+    '/image_count', 'image_count',
     '/(.*)', 'status'
 )
 app = web.application(urls, globals())
@@ -57,6 +58,10 @@ class create_mine:
         data = web.data()
         r.rpush(unfinished_mines_key, data)
 	print data
+
+class image_count:
+    def GET(self):
+        return Flickr.flickr.mirror_image_count()
 
 class delete_all_mines:
     def GET(self):
