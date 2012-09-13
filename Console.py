@@ -11,7 +11,7 @@ import web
 
 import redis
 
-#import dpy
+import dpy
 import boundary
 from dgeo import GeoGrid
 import Flickr
@@ -43,6 +43,7 @@ urls = (
     '/create_mine', 'create_mine',
     '/delete_all_mines', 'delete_all_mines',
     '/image_count', 'image_count',
+    '/random', 'random',
     '/(.*)', 'status'
 )
 app = web.application(urls, globals())
@@ -62,6 +63,12 @@ class create_mine:
 class image_count:
     def GET(self):
         return Flickr.flickr.mirror_image_count()
+
+class random:
+    def GET(self):
+        farm = dpy.random_item(os.path.listdir("data/flickr_mirror/"))
+        return farm
+        server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
 
 class delete_all_mines:
     def GET(self):
