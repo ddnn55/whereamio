@@ -66,8 +66,12 @@ class image_count:
 
 class random:
     def GET(self):
-        farm = dpy.random_item(os.path.listdir("data/flickr_mirror/"))
-        return farm
+        farm = dpy.random_item(os.listdir("data/flickr_mirror/"))
+        server = dpy.random_item(os.listdir("data/flickr_mirror/" + farm))
+        photo = dpy.random_item(os.listdir("data/flickr_mirror/" + farm + "/" + server))
+        image_path = "data/flickr_mirror/" + farm + "/" + server + "/" + photo + "/b.jpg"
+        return file(image_path)
+        return photo
         server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
 
 class delete_all_mines:

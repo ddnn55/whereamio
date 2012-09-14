@@ -39,16 +39,19 @@ if r.get(started_mining_key) == None:
 
 # for unfinished mines in mine list:
 while r.llen(unfinished_mines_key) > 0:
-   pipe = r.pipeline(transaction=True)
-   unfinished_mine_params = json.loads(r.lindex(unfinished_mines_key, 0))
-   mine = Flickr.GeoMine(unfinished_mine_params)
-   if mine.might_be_truncated():
-#     break mine into children
-      for child in mine.children():
-         pipe.rpush(unfinished_mines_key, child.toJSON())
-   else:
-#     download photos (and their metadata) in mine, mark mine finished
-      print "Reached quadtree leaf with " + str(len(mine.results)) + " photos"
-      mine.store_photos_and_metadata()
-   pipe.lpop(unfinished_mines_key)
-   pipe.execute()
+   try:
+      pipe = r.pipeline(transaction=True)
+      unfinished_mine_params = json.loads(r.lindex(unfinished_mines_key, 0))
+      mine = Flickr.GeoMine(unfinished_mine_params)
+      if mine.might_be_truncated():
+   #     break mine into children
+         for child in mine.children():
+            pipe.rpush(unfinished_mines_key, child.toJSON())
+      else:
+   #     download photos (and their metadata) in mine, mark mine finished
+         print "Reached quadtree leaf with " + str(len(mine.results)) + " photos"
+         mine.store_photos_and_metadata()
+      pipe.lpop(unfinished_mines_key)
+      pipe.execute()
+   except:
+      time.sleep(4) # probably Flickr timed out or is blocking, donno ...
