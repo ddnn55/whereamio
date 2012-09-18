@@ -21,31 +21,13 @@ function initialize() {
 
     function update() {
         //$('#image_count').load('/image_count');
-        
-	$.getJSON('/mean_shifts.json', function (data) {
-	   for(p in mean_shift_paths) {
-              mean_shift_paths[p].setMap(null);
-	   }
-	   mean_shift_paths = []
-	   for(i in data)
-	   {
-	      var rawPath = data[i];
-              var path = [];
-	      for(p in rawPath)
-	      {
-                 path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));
-	      }
-	      var opts = {
-                 clickable: false,
-		 map: map,
-		 path: path,
-		 strokeWeight: 2.0,
-		 strokeOpacity: 0.5,
-		 strokeColor: 'black'
-	      };
-              mean_shift_paths.push(new google.maps.Polyline(opts));
-	   }
-	});
+
+
+
+
+
+
+
 
         $.getJSON('/mines.json', function (data) {
 
@@ -84,9 +66,55 @@ function initialize() {
 
             $('#rectList').html(rectsString);
 
-            setTimeout(update, 2000);
 
         });
+
+        setTimeout(update, 2000);
+    }
+
+    function handle_meanshifts(data) {
+        for (p in mean_shift_paths) {
+            mean_shift_paths[p].setMap(null);
+        }
+        mean_shift_paths = []
+        console.log(data.length + " meanshifts in window")
+        for (i in data) {
+            var rawPath = data[i];
+            var path = [];
+            for (p in rawPath) {
+                path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));
+            }
+            var opts = {
+                clickable: false,
+                map: map,
+                path: path,
+                strokeWeight: 2.0,
+                strokeOpacity: 0.5,
+                strokeColor: 'black'
+            };
+            mean_shift_paths.push(new google.maps.Polyline(opts));
+        }
+
+        setTimeout(requestMeanshifts, 2000);
+    }
+
+    function requestMeanshifts() {
+        var params;
+        var bounds = map.getBounds();
+        if (typeof bounds !== "undefined") {
+            params = {
+                'left': map.getBounds().getSouthWest().lng(),
+                'bottom': map.getBounds().getSouthWest().lat(),
+                'right': map.getBounds().getNorthEast().lng(),
+                'top': map.getBounds().getNorthEast().lat(),
+            };
+        } else {
+            params = {}
+            console.log("bounds undefined!!!!!");
+        }
+
+        console.log("about to do meanshifts request");
+        $.getJSON('/mean_shifts.json', params, handle_meanshifts);
     }
 
     var annotationSW = new google.maps.LatLng(0.0, 0.0);
@@ -108,16 +136,19 @@ function initialize() {
 
     google.maps.event.addListener(map, 'rightclick', function (e) {
         console.log(e.latLng.toString());
-	$.ajax({
-	    method: "GET",
+        $.ajax({
+            method: "GET",
             url: "/mean_shift",
-            data: {'lat': e.latLng.lat(), 'lng': e.latLng.lng()},
+            data: {
+                'lat': e.latLng.lat(),
+                'lng': e.latLng.lng()
+            },
             //success: success
         });
     });
 
     google.maps.event.addListener(map, 'click', function (e) {
-	if (flip == 0) annotationSW = e.latLng;
+        if (flip == 0) annotationSW = e.latLng;
         else annotationNE = e.latLng;
         flip = (flip + 1) % 2;
         var rectBounds = new google.maps.LatLngBounds(annotationSW, annotationNE);
@@ -172,4 +203,7 @@ function initialize() {
 
     update();
 
+    setTimeout(requestMeanshifts, 2000);
+
 };
+

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import Flickr
 import dgeo
 import geopy
 from geopy import distance, point
 import math
+
+import Flickr
 
 class GeoMeanShift:
 
@@ -31,6 +32,7 @@ class GeoMeanShift:
       current_total_weight = 0.0
       current_mean = self.mean[-1]
       running_average = [0.0, 0.0]
+      have_contributors = False
       for photo in Flickr.flickr.points_in_circle(self.mean[-1], self.radius):
          #current_mean = self.mean[-1]
 	 pt = point.Point(photo['location'][0], photo['location'][1])
@@ -45,11 +47,18 @@ class GeoMeanShift:
 	 running_average = point.Point(new_x, new_y)
 	 current_total_weight = current_total_weight + weight
 
+	 have_contributors = True
+
          #print running_average
       #print "new_mean: " + str(running_average[0]) + ", " + str(running_average[1])
       self.mean.append(running_average)
-      return [running_average[0], running_average[1]]
-         
+      if have_contributors:
+         return [running_average[0], running_average[1]]
+      else:
+         return False
+
+
+
 if __name__ == "__main__":
    initial = [40.777194,-73.958545]
    target = [40.779388,-73.963437]

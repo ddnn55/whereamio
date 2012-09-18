@@ -5,6 +5,21 @@ import os
 import math
 import geopy
 
+def aspect_of_bbox(bbox):
+   left   = bbox['left']
+   right  = bbox['right']
+   top    = bbox['top']
+   bottom = bbox['bottom']
+   
+   middle_top    = geopy.point.Point(top, (left + right) / 2.0)
+   middle_bottom = geopy.point.Point(bottom, (left + right) / 2.0)
+   middle_right  = geopy.point.Point((top + bottom) / 2.0, right)
+   middle_left   = geopy.point.Point((top + bottom) / 2.0, left)
+   
+   width  = geopy.distance.distance(middle_left, middle_right)
+   height = geopy.distance.distance(middle_top, middle_bottom)
+
+   return width.m / height.m
 
 def distance_on_spherical_earth(lat1, long1, lat2, long2):
 

@@ -53,10 +53,15 @@ def mean_shift():
        i = i + 1
     return "yo"
 
-@app.route('/mean_shifts.json')
+@app.route('/mean_shifts.json', methods=['GET'])
 def mean_shifts_json():
+   print "starting meanshifts getter"
+   left   = float(request.args['left'])
+   right  = float(request.args['right'])
+   top    = float(request.args['top'])
+   bottom = float(request.args['bottom'])
    paths = []
-   for first in mean_shifts.find({'first': True}):
+   for first in mean_shifts.find({'first': True, 'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
       points = [first['location']]
       for point in mean_shifts.find({'start':first['_id']}).sort('index', 1):
          points.append(point['location'])

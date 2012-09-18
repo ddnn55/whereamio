@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+import json
+
+import pymongo
+
+import dgeo
+import Flickr
+import GeoMeanShift
+
+m = pymongo.Connection()
+mean_shifts = m.ltte.mean_shifts
+
+def run_mean_shift(cell):
+   initial_point = cell.center()
+   lat = initial_point[1]
+   lng = initial_point[0]
+   print str(lat) + ", " + str(lng)
+   ms = GeoMeanShift.GeoMeanShift([lat, lng], 0.005)
+   start_id = mean_shifts.insert( { 'index': 0,  'first': True, 'location': [lat, lng] } )
+   print start_id
+   i = 1
+   while not ms.done() and ms.step():
+      lat = ms.current_mean()[0]
+      lng = ms.current_mean()[1]
+      mean_shifts.insert( { 'start': start_id, 'index': i,  'location': [lat, lng] } )
+      print ms.current_mean()
+      i = i + 1
+
+def do_grid(args):
+   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
+   #aspect = dgeo.aspect_of_bbox(bbox)
+   #cols = args.number_across
+   #rows = int(cols / aspect)
+   #print "will do " + str(cols * rows) + " mean shifts"
+   grid = dgeo.GeoGrid(bbox['left'], bbox['right'], bbox['top'], bbox['bottom'], args.number_across)
+   grid.foreach_cell(run_mean_shift)
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(dest='command')
+
+geo_store_all_parser = subparsers.add_parser('geo_store_all')
+geo_store_all_parser.set_defaults(func=Flickr.geo_store_all)
+
+mean_shift_grid = subparsers.add_parser('mean_shift_grid')
+mean_shift_grid.add_argument('region_of_interest_metadata', type=str)
+mean_shift_grid.add_argument('number_across', type=int)
+mean_shift_grid.set_defaults(func=do_grid)
+
+args = parser.parse_args()
+args.func(args)

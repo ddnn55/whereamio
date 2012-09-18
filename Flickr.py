@@ -3,7 +3,7 @@
 import sys
 import os
 import urllib2
-import flickrapi
+#import flickrapi
 import json
 import pprint
 import time, calendar
@@ -196,12 +196,15 @@ class Flickr:
    geodb_photos = None
 
    def __init__(self):
-      self.flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret)
+      #import flickrapi
+      #self.flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret)
       # authenticate
-      (token, frob) = self.flickr.get_token_part_one(perms='read')
-      if not token: raw_input("Press ENTER after you authorized this program")
-      self.flickr.get_token_part_two((token, frob))
-      sys.stderr.write("Authed to Flickr\n")
+      #(token, frob) = self.flickr.get_token_part_one(perms='read')
+      #if not token: raw_input("Press ENTER after you authorized this program")
+      #self.flickr.get_token_part_two((token, frob))
+      #sys.stderr.write("Authed to Flickr\n")
+      pass
+      # FIXME holy crap so broken flickrapi keeps flask from printing debug stuff....
 
    def connect_geodb(self):
       self.geodb_connection = pymongo.Connection('localhost', 27017)
@@ -291,15 +294,4 @@ def geo_store_all(args):
          fail = fail + 1
       print "geodb insertion: " + str(success) + " succeeded, " + str(fail) + " failed"
 
-if __name__ == "__main__":
-   import argparse
-   import sys
-   
-   parser = argparse.ArgumentParser()
-   subparsers = parser.add_subparsers(dest='command')
-   
-   geo_store_all_parser = subparsers.add_parser('geo_store_all')
-   geo_store_all_parser.set_defaults(func=geo_store_all)
-   
-   args = parser.parse_args()
-   args.func(args)
+
