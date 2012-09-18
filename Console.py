@@ -6,99 +6,76 @@ import time
 import calendar
 import json
 import random
-import web
-
+#import web
+from flask import Flask
+from flask import request
 
 import redis
 
 import dpy
 import boundary
 from dgeo import GeoGrid
-import Flickr
+#import Flickr
 
-#if(len(sys.argv) < 2):
-#   print "Usage: " + sys.argv[0] + " mine_path"
-#   sys.exit(0)
-
-mine_path = "data/flickr_mine/New York-New York"
-
-metadata = json.load(file(mine_path + "/metadata.json"))
-bbox = metadata['bbox']
-min_upload_time = metadata['min_upload_time']
-max_upload_time = metadata['max_upload_time']
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
-# if mine list does not exist, create it (with single top level quad)
-unfinished_mines_key = mine_path + '_unfinished_mines'
-# TODO consolodate keys into single representation 
-
-#for mine in unfinished_mines:
-   #print mine
-#print str(len(unfinished_mines)) + " unfinished mines"
+unfinished_mines_key = 'unfinished_mines'
 
 
-        
-urls = (
-    '/mines.json', 'mines',
-    '/create_mine', 'create_mine',
-    '/delete_all_mines', 'delete_all_mines',
-    '/image_count', 'image_count',
-    '/random', 'random',
-    '/(.*)', 'status'
-)
-app = web.application(urls, globals())
+#app = web.application(urls, globals())
+app = Flask(__name__)
 
-class status:        
-    def GET(self, name):
-        if not name: 
-            name = 'World'
-        return file("static/Console.html")
+@app.route('/')
+def console():
+    print "this function------------------------------------"
+    return file("static/Console.html").read()
 
-class create_mine:
-    def POST(self):
-        data = web.data()
-        r.rpush(unfinished_mines_key, data)
-	print data
+@app.route('/mean_shift')
+def mean_shift():
+    lat = float(request.args['lat'])
+    lat = float(request.args['lng'])
+    print str(request.args) + "--------"
+    return "yo"
 
-class image_count:
-    def GET(self):
-        return Flickr.flickr.mirror_image_count()
+@app.route('/create_mine', methods=['POST'])
+def create_mine():
+    data = request.form.items()[0][0]
+    #return
+    r.rpush(unfinished_mines_key, data)
+    #print data
+    return "cool"
 
-class random:
-    def GET(self):
-        farm = dpy.random_item(os.listdir("data/flickr_mirror/"))
-        server = dpy.random_item(os.listdir("data/flickr_mirror/" + farm))
-        photo = dpy.random_item(os.listdir("data/flickr_mirror/" + farm + "/" + server))
-        image_path = "data/flickr_mirror/" + farm + "/" + server + "/" + photo + "/b.jpg"
-        return file(image_path)
-        return photo
-        server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
+@app.route('/image_count')
+def image_count():
+    return Flickr.flickr.mirror_image_count()
 
-class delete_all_mines:
-    def GET(self):
-        r.delete(unfinished_mines_key)
+@app.route('/random')
+def random():
+    farm = dpy.random_item(os.listdir("data/flickr_mirror/"))
+    server = dpy.random_item(os.listdir("data/flickr_mirror/" + farm))
+    photo = dpy.random_item(os.listdir("data/flickr_mirror/" + farm + "/" + server))
+    image_path = "data/flickr_mirror/" + farm + "/" + server + "/" + photo + "/b.jpg"
+    return file(image_path)
+    return photo
+    server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
 
-class mines:
-    def GET(self):
-        unfinished_mines = r.lrange(unfinished_mines_key, 0, -1)
-        unfinished_mines = [ json.loads(mine_string) for mine_string in unfinished_mines ]
-        return json.dumps(unfinished_mines)
+@app.route('/delete_all_mines')
+def delete_all():
+    r.delete(unfinished_mines_key)
+
+@app.route('/mines.json')
+def mines():
+    unfinished_mines = r.lrange(unfinished_mines_key, 0, -1)
+    unfinished_mines = [ json.loads(mine_string) for mine_string in unfinished_mines ]
+    return json.dumps(unfinished_mines)
+
+
+
+
 
 if __name__ == "__main__":
-    app.run()
-
-
-"""
-   pipe = r.pipeline(transaction=True)
-   unfinished_mine_bbox = json.loads(r.lindex(unfinished_mines_key, 0))
-   mine = Flickr.GeoMine(unfinished_mine_bbox, min_upload_time, max_upload_time)
-   if mine.might_be_truncated():
-#     break mine into children
-      for child in mine.children():
-         pipe.rpush(unfinished_mines_key, json.dumps(child.bbox))
-   else:
-#     download photos (and their metadata) in mine, mark mine finished
-      print "Reached quadtree leaf with " + str(len(mine.results)) + " photos"
-   pipe.lpop(unfinished_mines_key)
-   pipe.execute()
-"""
+  #  app.run()
+  # Bind to PORT if defined, otherwise default to 5000.
+  #port = int(os.environ.get('PORT', 5001))
+  #app.run(host='0.0.0.0', port=port, debug=True)
+  app.run(debug=True)
