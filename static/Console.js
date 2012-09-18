@@ -78,7 +78,12 @@ function initialize() {
         }
         mean_shift_paths = []
         console.log(data.length + " meanshifts in window")
-        for (i in data) {
+	var step = 1;
+	if(data.length > 1000) {
+	   step = Math.floor(data.length / 1000)
+           console.log('too many meanshifts! showing ~1,000');
+	}
+        for (var i = 0; i < data.length; i += step) {
             var rawPath = data[i];
             var path = [];
             for (p in rawPath) {
