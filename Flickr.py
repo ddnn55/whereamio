@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-
-
 import sys
 import os
 import urllib2
@@ -15,12 +13,19 @@ import math
 from PIL import Image
 import glob
 import subprocess
+import pymongo
 
 import dpy
 
 pp = pprint.PrettyPrinter(indent=3)
 
 flickr = None
+
+def flickrJSON2MongoGeoJSON(flickrJSON):
+   mongoGeoJSON = dict()
+   mongoGeoJSON['flickr'] = flickrJSON
+   mongoGeoJSON['location'] = [ float(flickrJSON['latitude']), float(flickrJSON['longitude']) ] # mongo recommended format for geo queries
+   return mongoGeoJSON
 
 class GeoMine: # TODO separate top level mine and this (sub mine)
 
@@ -100,9 +105,10 @@ class GeoMine: # TODO separate top level mine and this (sub mine)
 
 class FlickrPhoto:
 
-   def __init__(self, xml=None, locator_string=None, flickr=None):
+   def __init__(self, xml=None, locator_string=None, flickr=None, locator_path=None):
       self.xml = xml
       self.locator_string = locator_string
+      self.locator_path = locator_path
       self.flickr = flickr
 
    def image_base_url(self):
@@ -127,8 +133,14 @@ class FlickrPhoto:
       return "%s_%s_%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
    
    def flickr_locator_path(self):
-      return "%s/%s/%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
+      if self.locator_path != None:
+         return self.locator_path
+      else:
+         return "%s/%s/%s_%s" % ( self.xml.attrib['farm'], self.xml.attrib['server'], self.xml.attrib['id'], self.xml.attrib['secret'] )
       
+   def image_path(self):
+      return "data/flickr_mirror/" + self.flickr_locator_path()
+   
    def saveToDirectory(self, path):
       image_response = urllib2.urlopen(self.big_url())
       image_file = open(path + "/" + self.flickr_locator_string() + ".jpg", "w")
@@ -158,6 +170,22 @@ class FlickrPhoto:
          print "Stored image/metadata " + image_dir_path
       else:
          print "Already stored " + image_dir_path
+     
+   def store_in_geodb(self):
+      if self.xml == None:
+         metadata = json.load(open(self.image_path() + "/metadata.json"))
+	 geo_mongo_metadata = dict()
+	 geo_mongo_metadata['flickr'] = metadata
+	 geo_mongo_metadata['location'] = [ float(metadata['latitude']), float(metadata['longitude']) ]
+	 flickr.geodb_photos.insert(geo_mongo_metadata)
+
+
+#class MirrorImage:
+#
+#   def __init__(self, image_path):
+#      self.path = image_path
+#
+#   def store_in_geo_db():
       
 
 class Flickr:
@@ -172,6 +200,10 @@ class Flickr:
       if not token: raw_input("Press ENTER after you authorized this program")
       self.flickr.get_token_part_two((token, frob))
       sys.stderr.write("Authed to Flickr\n")
+
+   def connect_geodb(self):
+      self.geodb_connection = pymongo.Connection('localhost', 27017)
+      self.geodb_photos = self.geodb_connection.ltte.photos
 
    def query_bbox_and_upload_time_segment(self, bbox, min_upload_time, max_upload_time, limit):
       all_extras = "description,license,date_upload,date_taken,owner_name,icon_server,original_format,last_update,geo,tags,machine_tags,o_dims,views,media,path_alias"
@@ -218,4 +250,46 @@ class Flickr:
       os.path.walk("data/flickr_mirror", visit, self)
       return self._mirror_image_count
 
+   def mirrored_images(self):
+      farms = os.listdir("data/flickr_mirror/")
+      for farm in farms:
+         servers = os.listdir("data/flickr_mirror/" + farm)
+	 for server in servers:
+            photos = os.listdir("data/flickr_mirror/" + farm + "/" + server)
+	    for photo in photos:
+	       locator = farm + "/" + server + "/" + photo
+               yield(FlickrPhoto(locator_path=locator))
+
+   def foreach_local_photo(self, function):
+      for photo in self.mirrored_images():
+         function(photo)
+
 flickr = Flickr()
+
+def geo_store_all(args):
+   flickr.connect_geodb()
+   success = 0
+   fail = 0
+   for photo in flickr.mirrored_images():
+      try:
+         photo.store_in_geodb()
+         success = success + 1
+      except KeyboardInterrupt:
+         print "User exited"
+         exit()
+      except:
+         fail = fail + 1
+      print "geodb insertion: " + str(success) + " succeeded, " + str(fail) + " failed"
+
+if __name__ == "__main__":
+   import argparse
+   import sys
+   
+   parser = argparse.ArgumentParser()
+   subparsers = parser.add_subparsers(dest='command')
+   
+   geo_store_all_parser = subparsers.add_parser('geo_store_all')
+   geo_store_all_parser.set_defaults(func=geo_store_all)
+   
+   args = parser.parse_args()
+   args.func(args)
