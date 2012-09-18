@@ -193,6 +193,8 @@ class Flickr:
    api_key    = '9db4bbb1d275baedb6e77c2aa7538c90'
    api_secret = '09be4700c52c3996'
 
+   geodb_photos = None
+
    def __init__(self):
       self.flickr = flickrapi.FlickrAPI(self.api_key, self.api_secret)
       # authenticate
@@ -263,6 +265,14 @@ class Flickr:
    def foreach_local_photo(self, function):
       for photo in self.mirrored_images():
          function(photo)
+
+   def get_geodb_photos(self):
+      if self.geodb_photos == None:
+         self.connect_geodb()
+      return self.geodb_photos
+
+   def points_in_circle(self, center, radius):
+      return self.get_geodb_photos().find({"location": {"$within": {"$center": [[center[0], center[1]], radius]}}})
 
 flickr = Flickr()
 
