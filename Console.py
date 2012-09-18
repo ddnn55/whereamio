@@ -53,6 +53,16 @@ def mean_shift():
        i = i + 1
     return "yo"
 
+@app.route('/mean_shifts.json')
+def mean_shifts_json():
+   paths = []
+   for first in mean_shifts.find({'first': True}):
+      points = [first['location']]
+      for point in mean_shifts.find({'start':first['_id']}).sort('index', 1):
+         points.append(point['location'])
+      paths.append(points)
+   return json.dumps(paths)
+
 @app.route('/create_mine', methods=['POST'])
 def create_mine():
     data = request.form.items()[0][0]

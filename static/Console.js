@@ -17,9 +17,35 @@ function initialize() {
     var map = new google.maps.Map(document.getElementById('map_canvas'), mapOptions);
 
     var rectangles = [];
+    var mean_shift_paths = [];
 
     function update() {
         //$('#image_count').load('/image_count');
+        
+	$.getJSON('/mean_shifts.json', function (data) {
+	   for(p in mean_shift_paths) {
+              mean_shift_paths[p].setMap(null);
+	   }
+	   mean_shift_paths = []
+	   for(i in data)
+	   {
+	      var rawPath = data[i];
+              var path = [];
+	      for(p in rawPath)
+	      {
+                 path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));
+	      }
+	      var opts = {
+                 clickable: false,
+		 map: map,
+		 path: path,
+		 strokeWeight: 2.0,
+		 strokeOpacity: 0.5,
+		 strokeColor: 'black'
+	      };
+              mean_shift_paths.push(new google.maps.Polyline(opts));
+	   }
+	});
 
         $.getJSON('/mines.json', function (data) {
 
@@ -58,7 +84,7 @@ function initialize() {
 
             $('#rectList').html(rectsString);
 
-            setTimeout(update, 5000);
+            setTimeout(update, 2000);
 
         });
     }
