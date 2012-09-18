@@ -11,16 +11,21 @@ from flask import Flask
 from flask import request
 
 import redis
+import pymongo
 
 import dpy
 import boundary
 from dgeo import GeoGrid
+
 #import Flickr
+import GeoMeanShift
 
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 unfinished_mines_key = 'unfinished_mines'
 
+m = pymongo.Connection()
+mean_shifts = m.ltte.mean_shifts
 
 #app = web.application(urls, globals())
 app = Flask(__name__)
@@ -33,8 +38,19 @@ def console():
 @app.route('/mean_shift')
 def mean_shift():
     lat = float(request.args['lat'])
-    lat = float(request.args['lng'])
-    print str(request.args) + "--------"
+    lng = float(request.args['lng'])
+    print str(lat) + ", " + str(lng)
+    ms = GeoMeanShift.GeoMeanShift([lat, lng], 0.005)
+    start_id = mean_shifts.insert( { 'index': 0,  'first': True, 'location': [lat, lng] } )
+    print start_id
+    i = 1
+    while not ms.done():
+       ms.step()
+       lat = ms.current_mean()[0]
+       lng = ms.current_mean()[1]
+       mean_shifts.insert( { 'start': start_id, 'index': i,  'location': [lat, lng] } )
+       print ms.current_mean()
+       i = i + 1
     return "yo"
 
 @app.route('/create_mine', methods=['POST'])
@@ -55,13 +71,14 @@ def random():
     server = dpy.random_item(os.listdir("data/flickr_mirror/" + farm))
     photo = dpy.random_item(os.listdir("data/flickr_mirror/" + farm + "/" + server))
     image_path = "data/flickr_mirror/" + farm + "/" + server + "/" + photo + "/b.jpg"
-    return file(image_path)
+    return file(image_path).read()
     return photo
     server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
 
 @app.route('/delete_all_mines')
 def delete_all():
     r.delete(unfinished_mines_key)
+    return "cool"
 
 @app.route('/mines.json')
 def mines():

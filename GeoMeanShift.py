@@ -12,9 +12,20 @@ class GeoMeanShift:
       self.mean = list()
       self.mean.append(point.Point(initial_point[0], initial_point[1]))
       self.radius = radius
+      self._done = False
 
    def weight_kernel(self, d):
       return math.exp( - d * d )
+
+   def done(self):
+      if len(self.mean) > 1:
+         #print distance.distance(self.mean[-1], self.mean[-2])
+         return distance.distance(self.mean[-1], self.mean[-2]).m < 0.01
+      else:
+         return False
+
+   def current_mean(self):
+      return self.mean[-1]
 
    def step(self):
       current_total_weight = 0.0
@@ -35,8 +46,9 @@ class GeoMeanShift:
 	 current_total_weight = current_total_weight + weight
 
          #print running_average
-      print "new_mean: " + str(running_average[0]) + ", " + str(running_average[1])
+      #print "new_mean: " + str(running_average[0]) + ", " + str(running_average[1])
       self.mean.append(running_average)
+      return [running_average[0], running_average[1]]
          
 if __name__ == "__main__":
    initial = [40.777194,-73.958545]
