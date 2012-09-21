@@ -29,25 +29,39 @@ def run_mean_shift(cell):
       print ms.current_mean()
       i = i + 1
 
+
+
 def do_grid(args):
    bbox = json.load(file(args.region_of_interest_metadata))['bbox']
-   #aspect = dgeo.aspect_of_bbox(bbox)
-   #cols = args.number_across
-   #rows = int(cols / aspect)
-   #print "will do " + str(cols * rows) + " mean shifts"
    grid = dgeo.GeoGrid(bbox['left'], bbox['right'], bbox['top'], bbox['bottom'], args.number_across)
    grid.foreach_cell(run_mean_shift)
+
+def _clear_meanshifts(args):
+   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
+   left   = float(bbox['left'])
+   right  = float(bbox['right'])
+   top    = float(bbox['top'])
+   bottom = float(bbox['bottom'])
+   print "clearing meanshifts in ROI " + args.region_of_interest_metadata
+   mean_shifts.remove({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}})
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command')
 
+# geo_store_all
 geo_store_all_parser = subparsers.add_parser('geo_store_all')
 geo_store_all_parser.set_defaults(func=Flickr.geo_store_all)
 
+# mean_shift_grid
 mean_shift_grid = subparsers.add_parser('mean_shift_grid')
 mean_shift_grid.add_argument('region_of_interest_metadata', type=str)
 mean_shift_grid.add_argument('number_across', type=int)
 mean_shift_grid.set_defaults(func=do_grid)
+
+# clear_meanshifts
+clear_meanshifts = subparsers.add_parser('clear_meanshifts')
+clear_meanshifts.add_argument('region_of_interest_metadata', type=str)
+clear_meanshifts.set_defaults(func=_clear_meanshifts)
 
 args = parser.parse_args()
 args.func(args)
