@@ -180,6 +180,14 @@ class FlickrPhoto:
 	 flickr.geodb_photos.insert(geo_mongo_metadata)
 
 
+class MirroredPhoto:
+
+   def __init__(self, dbjson):
+      self.dbjson = dbjson
+   
+   def flickr_locator_path(self):
+      return "%s/%s/%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
+ 
 #class MirrorImage:
 #
 #   def __init__(self, image_path):

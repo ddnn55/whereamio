@@ -106,6 +106,13 @@ function initialize() {
 
     var centers = [];
 
+    function attachLink(circle, _id){
+       google.maps.event.addListener(circle, 'click', function (e) {
+	  window.open("/cluster/" + _id);
+       });
+    }
+
+
     function handle_centers(data) {
         for (c in centers) {
             centers[c].setMap(null);
@@ -113,17 +120,16 @@ function initialize() {
         centers = []
         console.log(data.length + " centers in window")
         for (var i = 0; i < data.length; i++) {
-            var center = data[i];
-            console.log(center);
-  
-            circleOpts = {
+            var center = data[i]['center'];
+            var _id = data[i]['_id'];
+            var circleOpts = {
                 center: new google.maps.LatLng(center[0], center[1]),
                 radius: 100,
 		map: map
-                
             }
-
-            centers.push(new google.maps.Circle(circleOpts));
+            var circle = new google.maps.Circle(circleOpts);
+            attachLink(circle, _id);
+            centers.push(circle);
    /*         var path = [];
             for (p in rawPath) {
                 path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));
@@ -161,7 +167,7 @@ function initialize() {
         }
 
         console.log("about to do centers request");
-        $.getJSON('/centers.json', params, handle_centers);
+        $.getJSON('/clusters', params, handle_centers);
     }
 
 

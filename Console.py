@@ -12,6 +12,7 @@ from flask import request
 
 import redis
 import pymongo
+from bson import objectid
 
 import dpy
 import boundary
@@ -26,7 +27,8 @@ unfinished_mines_key = 'unfinished_mines'
 
 m = pymongo.Connection()
 mean_shifts = m.ltte.mean_shifts
-skmeanshifts = m.ltte.skmeanshifts
+clusters = m.ltte.clusters
+photos = m.ltte.photos
 
 #app = web.application(urls, globals())
 app = Flask(__name__)
@@ -54,18 +56,35 @@ def mean_shift():
        i = i + 1
     return "yo"
 
-@app.route('/centers.json', methods=['GET'])
+@app.route('/clusters', methods=['GET'])
 def sklearn_mean_shifts_json():
    left   = float(request.args['left'])
    right  = float(request.args['right'])
    top    = float(request.args['top'])
    bottom = float(request.args['bottom'])
-   centers = []
-   for center in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
-      point = center['location']
-      centers.append(point)
-   return json.dumps(centers)
+   _clusters = []
+   #for cluster in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
+   for cluster in clusters.find():
+      point = {'center': cluster['center'], '_id': str(cluster['_id'])}
+      _clusters.append(point)
+   return json.dumps(_clusters)
 
+@app.route('/cluster/<cluster_id>')
+def cluster(cluster_id):
+   import Flickr
+   html = ""
+   count = 0
+   oid = objectid.ObjectId(cluster_id)
+   print oid
+   for photo in photos.find({'cluster':oid}):
+      mi = Flickr.MirroredPhoto(photo)
+      html = html + '<img src="/static/flickr/' + mi.flickr_locator_path() + '/b.jpg">'
+      html = html + photo['flickr']['title']
+      html = html + photo['flickr']['tags']
+      html = html + "<br>"
+      count = count + 1
+   html = str(count) + "<br>" + html
+   return html
 
 @app.route('/mean_shifts.json', methods=['GET'])
 def mean_shifts_json():

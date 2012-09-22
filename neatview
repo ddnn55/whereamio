@@ -15,7 +15,7 @@ import GeoMeanShift
 m = pymongo.Connection()
 mean_shifts = m.ltte.mean_shifts
 photos = m.ltte.photos
-skmeanshifts = m.ltte.skmeanshifts
+clusters = m.ltte.clusters
 
 def run_mean_shift(cell):
    initial_point = cell.center()
@@ -95,6 +95,7 @@ def _sklearn_meanshift(args):
    
    point = photos.find_one()['location']
    points = None
+   ids = []
    count = 0
    for photo in photos.find({}, {'location':1}):
       if bbox.contains(photo['location']):
@@ -102,9 +103,10 @@ def _sklearn_meanshift(args):
 	    points = np.array(photo['location'])
 	 else:
 	    points = np.vstack((points, photo['location']))
-	 count = count + 1
+	 ids.append(photo['_id'])
+         count = count + 1
 
-   ms = MeanShift(bandwidth=0.005, bin_seeding=True)
+   ms = MeanShift(bandwidth=0.003, bin_seeding=True)
    ms.fit(points)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
@@ -113,11 +115,22 @@ def _sklearn_meanshift(args):
    n_clusters_ = len(labels_unique)
 
    print "number of estimated clusters : %d" % n_clusters_
+   print "number of labels : %d" % len(labels)
+   label = 0
+   cluster_ids = []
    for center in cluster_centers:
       latitude = center[0]
       longitude = center[1]
-      skmeanshifts.insert({'location':[latitude, longitude]})
+      _id = clusters.insert({'center':[latitude, longitude], 'label':label})
+      cluster_ids.append(_id)
+      label = label + 1
 
+   i = 0
+   for _id in ids:
+      print "label " + str(labels[i])
+      photos.update({'_id':_id}, {"$set": {'cluster':cluster_ids[labels[i]]}})
+      i = i + 1
+   print "update " + str(i) + "photo.cluster foreign keys"
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command')
