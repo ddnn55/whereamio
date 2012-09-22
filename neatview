@@ -15,6 +15,7 @@ import GeoMeanShift
 m = pymongo.Connection()
 mean_shifts = m.ltte.mean_shifts
 photos = m.ltte.photos
+skmeanshifts = m.ltte.skmeanshifts
 
 def run_mean_shift(cell):
    initial_point = cell.center()
@@ -31,8 +32,6 @@ def run_mean_shift(cell):
       mean_shifts.insert( { 'start': start_id, 'index': i,  'location': [lat, lng] } )
       print ms.current_mean()
       i = i + 1
-
-
 
 def do_grid(args):
    bbox = json.load(file(args.region_of_interest_metadata))['bbox']
@@ -83,19 +82,30 @@ def _plot_photos(args):
    print "Plotted " + str(count) + " photos to " + image_path
 
 def _sklearn_meanshift(args):
-   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
+   
+   
    import numpy as np
    from sklearn.cluster import MeanShift, estimate_bandwidth
+   bbox = dgeo.LatLngBoundingBox(json.load(file(args.roi_path))['bbox'])
+   
+   #plot = Image.new("L", (1024, int(1024 / bbox.aspect())))
+   plot = np.zeros((1024, int(1024/bbox.aspect())))
 
-   print Flickr.flickr.count_photos_in_bbox(bbox)
-   return
-   photos = Flickr.flickr.photos_in_bbox(bbox)
-   for photo in photos:
-      print photo
-   return
+   print "sklearn MeanShift of ROI " + args.roi_path
+   
+   point = photos.find_one()['location']
+   points = None
+   count = 0
+   for photo in photos.find({}, {'location':1}):
+      if bbox.contains(photo['location']):
+	 if points == None:
+	    points = np.array(photo['location'])
+	 else:
+	    points = np.vstack((points, photo['location']))
+	 count = count + 1
 
-   ms = MeanShift(bandwidth=0.01, bin_seeding=True)
-   ms.fit(X)
+   ms = MeanShift(bandwidth=0.005, bin_seeding=True)
+   ms.fit(points)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
 
@@ -103,6 +113,11 @@ def _sklearn_meanshift(args):
    n_clusters_ = len(labels_unique)
 
    print "number of estimated clusters : %d" % n_clusters_
+   for center in cluster_centers:
+      latitude = center[0]
+      longitude = center[1]
+      skmeanshifts.insert({'location':[latitude, longitude]})
+
 
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command')
@@ -124,7 +139,7 @@ clear_meanshifts.set_defaults(func=_clear_meanshifts)
 
 # sklearn_meanshift
 sklearn_meanshift = subparsers.add_parser('sklearn_meanshift')
-sklearn_meanshift.add_argument('region_of_interest_metadata', type=str)
+sklearn_meanshift.add_argument('roi_path', type=str)
 sklearn_meanshift.set_defaults(func=_sklearn_meanshift)
 
 # plot photos
@@ -135,3 +150,4 @@ sklearn_meanshift.set_defaults(func=_plot_photos)
 
 args = parser.parse_args()
 args.func(args)
+

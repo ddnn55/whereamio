@@ -103,6 +103,71 @@ function initialize() {
         setTimeout(requestMeanshifts, 2000);
     }
 
+
+    var centers = [];
+
+    function handle_centers(data) {
+        for (c in centers) {
+            centers[c].setMap(null);
+        }
+        centers = []
+        console.log(data.length + " centers in window")
+        for (var i = 0; i < data.length; i++) {
+            var center = data[i];
+            console.log(center);
+  
+            circleOpts = {
+                center: new google.maps.LatLng(center[0], center[1]),
+                radius: 100,
+		map: map
+                
+            }
+
+            centers.push(new google.maps.Circle(circleOpts));
+   /*         var path = [];
+            for (p in rawPath) {
+                path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));
+            }
+            var opts = {
+                clickable: false,
+                map: map,
+                path: path,
+                strokeWeight: 2.0,
+                strokeOpacity: 0.5,
+                strokeColor: 'black'
+            };
+            mean_shift_paths.push(new google.maps.Polyline(opts));*/
+        }
+
+        //setTimeout(requestCenters, 2000);
+    }
+
+
+
+
+    function requestCenters() {
+        var params;
+        var bounds = map.getBounds();
+        if (typeof bounds !== "undefined") {
+            params = {
+                'left': map.getBounds().getSouthWest().lng(),
+                'bottom': map.getBounds().getSouthWest().lat(),
+                'right': map.getBounds().getNorthEast().lng(),
+                'top': map.getBounds().getNorthEast().lat(),
+            };
+        } else {
+            params = {}
+            console.log("bounds undefined!!!!!");
+        }
+
+        console.log("about to do centers request");
+        $.getJSON('/centers.json', params, handle_centers);
+    }
+
+
+
+
+
     function requestMeanshifts() {
         var params;
         var bounds = map.getBounds();
@@ -208,7 +273,10 @@ function initialize() {
 
     update();
 
-    setTimeout(requestMeanshifts, 2000);
+    setTimeout(requestCenters, 2000);
+
+    //setTimeout(requestMeanshifts, 2000);
+
 
 };
 

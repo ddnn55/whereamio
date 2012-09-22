@@ -26,6 +26,7 @@ unfinished_mines_key = 'unfinished_mines'
 
 m = pymongo.Connection()
 mean_shifts = m.ltte.mean_shifts
+skmeanshifts = m.ltte.skmeanshifts
 
 #app = web.application(urls, globals())
 app = Flask(__name__)
@@ -52,6 +53,19 @@ def mean_shift():
        print ms.current_mean()
        i = i + 1
     return "yo"
+
+@app.route('/centers.json', methods=['GET'])
+def sklearn_mean_shifts_json():
+   left   = float(request.args['left'])
+   right  = float(request.args['right'])
+   top    = float(request.args['top'])
+   bottom = float(request.args['bottom'])
+   centers = []
+   for center in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
+      point = center['location']
+      centers.append(point)
+   return json.dumps(centers)
+
 
 @app.route('/mean_shifts.json', methods=['GET'])
 def mean_shifts_json():
@@ -109,5 +123,6 @@ if __name__ == "__main__":
   #  app.run()
   # Bind to PORT if defined, otherwise default to 5000.
   #port = int(os.environ.get('PORT', 5001))
-  #app.run(host='0.0.0.0', port=port, debug=True)
-  app.run(debug=True)
+  app.run(host='0.0.0.0', port=5000, debug=True)
+  #app.run(debug=True)
+
