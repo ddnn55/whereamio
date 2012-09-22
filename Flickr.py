@@ -277,6 +277,21 @@ class Flickr:
    def points_in_circle(self, center, radius):
       return self.get_geodb_photos().find({"location": {"$within": {"$center": [[center[0], center[1]], radius]}}})
 
+   def photos_in_bbox(self, bbox):
+      left   = float(bbox['left'])
+      right  = float(bbox['right'])
+      top    = float(bbox['top'])
+      bottom = float(bbox['bottom'])
+      return self.get_geodb_photos().find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}, {'location':1})
+
+   def count_photos_in_bbox(self, bbox):
+      left   = float(bbox['left'])
+      right  = float(bbox['right'])
+      top    = float(bbox['top'])
+      bottom = float(bbox['bottom'])
+      return self.get_geodb_photos().find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}, {'location':1}).count()
+
+
 flickr = Flickr()
 
 def geo_store_all(args):

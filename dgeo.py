@@ -62,7 +62,40 @@ def ok_projection_aspect(left, right, top, bottom):
    meter_height = distance_on_spherical_earth(bottom, center_x, top, center_x)
 
    return meter_width / meter_height
+  
+class LatLngBoundingBox:
+
+   def __init__(self, bbox_dict):
+      self.left = bbox_dict['left']
+      self.right = bbox_dict['right']
+      self.top = bbox_dict['top']
+      self.bottom = bbox_dict['bottom']
+
+   def aspect(self):
+      middle_top    = geopy.point.Point(self.top, (self.left + self.right) / 2.0)
+      middle_bottom = geopy.point.Point(self.bottom, (self.left + self.right) / 2.0)
+      middle_right  = geopy.point.Point((self.top + self.bottom) / 2.0, self.right)
+      middle_left   = geopy.point.Point((self.top + self.bottom) / 2.0, self.left)
    
+      width  = geopy.distance.distance(middle_left, middle_right)
+      height = geopy.distance.distance(middle_top, middle_bottom)
+
+      return width.m / height.m
+
+   def width(self):
+      return self.right - self.left
+   
+   def height(self):
+      return self.top - self.bottom
+
+   def normalize(self, point):
+      normal = point
+      normal[0] = (point[0] - self.bottom) / self.height()
+      normal[1] = (point[1] - self.left) / self.width()
+      return normal
+
+   def contains(self, point):
+      return self.left <= point[1] and self.right >= point[1] and self.top >= point[0] and self.bottom <= point[0]
 
 class GeoGridCell:
 
