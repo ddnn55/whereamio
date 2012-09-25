@@ -58,14 +58,14 @@ def _plot_photos(args):
    if args.labels:
       for cluster in clusters.find():
          if bbox.contains(cluster['center']):
-	    colors[cluster['_id']] = random_color()
+	    colors[cluster['_id']] = dpy.random_color3f()
 
    #plot = Image.new("L", (1024, int(1024 / bbox.aspect())))
    plot = np.zeros((1024, int(1024/bbox.aspect()), 3))
 
    print "plot photos in ROI " + args.roi_path
    count = 0
-   for photo in photos.find({}, {'location':1}):
+   for photo in photos.find({}, {'location':1, 'cluster':1}):
    #for photo in photos.find():
 
       #print photo['location']
@@ -76,16 +76,19 @@ def _plot_photos(args):
 	 normal_pos = bbox.normalize(photo['location'])
 	 x = plot.shape[0] * normal_pos[1]
 	 y = plot.shape[1] * normal_pos[0]
-         plot[x, y, 0] = plot[x, y, 0] + 1
-         plot[x, y, 1] = plot[x, y, 1] + 1
-         plot[x, y, 2] = plot[x, y, 2] + 1
+	 if not args.labels:
+            plot[x, y, 0] = plot[x, y, 0] + 1
+            plot[x, y, 1] = plot[x, y, 1] + 1
+            plot[x, y, 2] = plot[x, y, 2] + 1
+	 else:
+	    plot[x, y] = colors[photo['cluster']]
 
          count = count + 1
-   
-   plot /= plot.max()
-   plot = np.power(plot, 1.0 / 16.0)
+   if not args.labels:
+      plot /= float(plot.max())
+      plot = np.power(plot, 1.0 / 16.0)
 
-   image_path = "data/plots/" + os.path.basename(args.roi_path) + str(count) + ".jpg"
+   image_path = "data/plots/" + os.path.basename(args.roi_path) + str(count) + ".png"
    dpy.ensure_dir('data/plots')
    imsave(image_path, np.rot90(plot))
    print "Plotted " + str(count) + " photos to " + image_path

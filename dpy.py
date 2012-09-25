@@ -15,3 +15,6 @@ def now():
 
 def random_item(items):
    return items[random.randint(0, len(items)-1)]
+
+def random_color3f():
+   return (random.random(), random.random(), random.random())
