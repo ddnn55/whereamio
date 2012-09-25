@@ -52,9 +52,16 @@ def _plot_photos(args):
    import numpy as np
    from skimage.io import imsave
    bbox = dgeo.LatLngBoundingBox(json.load(file(args.roi_path))['bbox'])
-   
+  
+   print "Will color points by cluster: " + str(args.labels)
+   colors = dict()
+   if args.labels:
+      for cluster in clusters.find():
+         if bbox.contains(cluster['center']):
+	    colors[cluster['_id']] = random_color()
+
    #plot = Image.new("L", (1024, int(1024 / bbox.aspect())))
-   plot = np.zeros((1024, int(1024/bbox.aspect())))
+   plot = np.zeros((1024, int(1024/bbox.aspect()), 3))
 
    print "plot photos in ROI " + args.roi_path
    count = 0
@@ -69,12 +76,14 @@ def _plot_photos(args):
 	 normal_pos = bbox.normalize(photo['location'])
 	 x = plot.shape[0] * normal_pos[1]
 	 y = plot.shape[1] * normal_pos[0]
-         plot[x, y] = plot[x, y] + 1
+         plot[x, y, 0] = plot[x, y, 0] + 1
+         plot[x, y, 1] = plot[x, y, 1] + 1
+         plot[x, y, 2] = plot[x, y, 2] + 1
 
          count = count + 1
    
    plot /= plot.max()
-   plot = np.power(plot, 1.0 / 8.0)
+   plot = np.power(plot, 1.0 / 16.0)
 
    image_path = "data/plots/" + os.path.basename(args.roi_path) + str(count) + ".jpg"
    dpy.ensure_dir('data/plots')
@@ -158,6 +167,8 @@ sklearn_meanshift.set_defaults(func=_sklearn_meanshift)
 # plot photos
 sklearn_meanshift = subparsers.add_parser('plot_photos')
 sklearn_meanshift.add_argument('roi_path', type=str)
+sklearn_meanshift.add_argument('--labels', dest='labels', action='store_const',
+                               const=True, default=False, help='color code points by cluster')
 sklearn_meanshift.set_defaults(func=_plot_photos)
 
 
