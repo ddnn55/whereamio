@@ -187,7 +187,13 @@ class MirroredPhoto:
    
    def flickr_locator_path(self):
       return "%s/%s/%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
- 
+   
+   def flickr_locator_string(self):
+      return "%s_%s_%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
+
+   def jpg_path(self):
+    return 'data/flickr_mirror/' + self.flickr_locator_path() + '/b.jpg'
+
 #class MirrorImage:
 #
 #   def __init__(self, image_path):

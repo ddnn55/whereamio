@@ -4,6 +4,7 @@ import argparse
 import sys
 import os
 import json
+import random
 
 import pymongo
 
@@ -144,6 +145,22 @@ def _sklearn_meanshift(args):
       i = i + 1
    print "update " + str(i) + "photo.cluster foreign keys"
 
+def _random_photos(args):
+  import shutil
+  random_photos = []
+  for i in range(0, args.N):
+    random_photos.append(random_photo())
+  dpy.ensure_dir(args.destination_directory)
+  for image in random_photos:
+    shutil.copy(image.jpg_path(), args.destination_directory + "/" + image.flickr_locator_string() + ".jpg")
+    #print "cp " + image.jpg_path() + " " + args.destination_directory + "/" + image.flickr_locator_string() + ".jpg"
+
+def random_photo():
+  count = photos.count()
+  index = random.randint(0, count)
+  random_photo = photos.find().skip(index).limit(1).next()
+  return Flickr.MirroredPhoto(random_photo)
+
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command')
 
@@ -173,6 +190,13 @@ sklearn_meanshift.add_argument('roi_path', type=str)
 sklearn_meanshift.add_argument('--labels', dest='labels', action='store_const',
                                const=True, default=False, help='color code points by cluster')
 sklearn_meanshift.set_defaults(func=_plot_photos)
+
+# random photos
+random_photos = subparsers.add_parser('random')
+random_photos.add_argument('N', type=int)
+random_photos.add_argument('destination_directory', type=str)
+random_photos.set_defaults(func=_random_photos)
+
 
 
 args = parser.parse_args()
