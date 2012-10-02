@@ -55,12 +55,8 @@ def photos_in_roi(roi_path):
    })
 
 def clusters_in_bbox(roi_path):
-   bbox = json.load(file(roi_path))['bbox']
-   left   = float(bbox['left'])
-   right  = float(bbox['right'])
-   top    = float(bbox['top'])
-   bottom = float(bbox['bottom'])
-   return ltte.clusters.find({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   bbox = load_roi(roi_path)
+   return ltte.clusters.find({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
 
 def _list_meanshifts(args):
    results = clusters_in_bbox(args.region_of_interest_metadata)
