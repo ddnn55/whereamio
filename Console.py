@@ -72,16 +72,16 @@ def sklearn_mean_shifts_json():
 @app.route('/cluster/<cluster_id>')
 def cluster(cluster_id):
    import Flickr
-   html = ""
+   html = '<link type="text/css" href="/static/css/cluster.css" rel="stylesheet" />'
    count = 0
    oid = objectid.ObjectId(cluster_id)
    print oid
    for photo in photos.find({'cluster':oid}):
       mi = Flickr.MirroredPhoto(photo)
-      html = html + '<img src="/static/flickr/' + mi.flickr_locator_path() + '/b.jpg">'
-      html = html + photo['flickr']['title']
+      html = html + '<div class="cell"><div style="background-image:url(/static/flickr/' + mi.flickr_locator_path() + '/b.jpg)" class="image"></div><br>'
+      html = html + photo['flickr']['title'] + '<br>'
       html = html + photo['flickr']['tags']
-      html = html + "<br>"
+      html = html + "</div>"
       count = count + 1
    html = str(count) + "<br>" + html
    return html
