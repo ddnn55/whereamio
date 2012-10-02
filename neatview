@@ -66,7 +66,7 @@ def _list_meanshifts(args):
 def _clear_meanshifts(args):
    bbox = load_roi(args.region_of_interest_metadata)
    print "clearing meanshifts in ROI " + args.region_of_interest_metadata
-   ltte.clusters.remove({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
+   count = ltte.clusters.remove({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
 
 def _plot_photos(args):
    #from PIL import Image, ImageDraw
@@ -123,36 +123,42 @@ def _sklearn_meanshift(args):
    
    # get points in bbox (move to MongoDB query!)
    point = ltte.photos.find_one()['location']
-   points = None
+   photo_locations = None
    ids = []
    count = 0
    #for photo in photos.find({}, {'location':1}):
       #if bbox.contains(photo['location']):
    for photo in photos_in_roi(args.roi_path):
-	 if points == None:
-	    points = np.array(photo['location'])
+	 if photo_locations == None:
+	    photo_locations = np.array(photo['location'])
 	 else:
-	    points = np.vstack((points, photo['location']))
+	    photo_locations = np.vstack((photo_locations, photo['location']))
 	 ids.append(photo['_id'])
          count = count + 1
 
    # do meanshift
    ms = MeanShift(bandwidth=0.003, bin_seeding=True)
-   ms.fit(points)
+   ms.fit(photo_locations)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
   
    # count photos per cluster
+   cluster_points = [ [] for center in cluster_centers ]
    cluster_sizes = [ 0 for center in cluster_centers ]
-   for label in labels:
-     cluster_sizes[label] = cluster_sizes[label] + 1
+   #for cluster_index in labels:
+   for p in range(0, len(labels)):
+     cluster_index = labels[p]
+     cluster_sizes[cluster_index] = cluster_sizes[cluster_index] + 1
+     
+     location = photo_locations[p]
+     cluster_points[cluster_index].append(location)
    print cluster_sizes
 
    labels_unique = np.unique(labels)
    n_clusters_ = len(labels_unique)
 
-   print "number of estimated clusters : %d" % n_clusters_
-   print "number of labels : %d" % len(labels)
+   print "number of clusters : %d" % n_clusters_
+   print "number of photos : %d" % len(labels)
    label = 0
    cluster_ids = []
    for center in cluster_centers:
@@ -169,7 +175,7 @@ def _sklearn_meanshift(args):
       cluster_sizes[labels[i]] = cluster_sizes[labels[i]] + 1
       ltte.photos.update({'_id':_id}, {"$set": {'cluster':cluster_ids[labels[i]]}})
       i = i + 1
-   print "update " + str(i) + "photo.cluster foreign keys"
+   #print "updated " + str(i) + " photo.cluster foreign keys"
 
 def _random_photos(args):
   import shutil
