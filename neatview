@@ -68,13 +68,9 @@ def _list_meanshifts(args):
       print ms
 
 def _clear_meanshifts(args):
-   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
-   left   = float(bbox['left'])
-   right  = float(bbox['right'])
-   top    = float(bbox['top'])
-   bottom = float(bbox['bottom'])
+   bbox = load_roi(args.region_of_interest_metadata)
    print "clearing meanshifts in ROI " + args.region_of_interest_metadata
-   ltte.clusters.remove({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   ltte.clusters.remove({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
 
 def _plot_photos(args):
    #from PIL import Image, ImageDraw
