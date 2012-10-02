@@ -39,6 +39,19 @@ def do_grid(args):
    grid = dgeo.GeoGrid(bbox['left'], bbox['right'], bbox['top'], bbox['bottom'], args.number_across)
    grid.foreach_cell(run_mean_shift)
 
+def _list_meanshifts(args):
+   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
+   left   = float(bbox['left'])
+   right  = float(bbox['right'])
+   top    = float(bbox['top'])
+   bottom = float(bbox['bottom'])
+   print "listing meanshifts in ROI " + args.region_of_interest_metadata
+   results = clusters.find({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   for ms in results:
+      print ms
+
+
+
 def _clear_meanshifts(args):
    bbox = json.load(file(args.region_of_interest_metadata))['bbox']
    left   = float(bbox['left'])
@@ -46,7 +59,7 @@ def _clear_meanshifts(args):
    top    = float(bbox['top'])
    bottom = float(bbox['bottom'])
    print "clearing meanshifts in ROI " + args.region_of_interest_metadata
-   mean_shifts.remove({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   clusters.remove({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
 
 def _plot_photos(args):
    #from PIL import Image, ImageDraw
@@ -123,6 +136,11 @@ def _sklearn_meanshift(args):
    ms.fit(points)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
+   
+   cluster_sizes = [ 0 for center in cluster_centers ]
+   for label in labels:
+     cluster_sizes[label] = cluster_sizes[label] + 1
+   print cluster_sizes
 
    labels_unique = np.unique(labels)
    n_clusters_ = len(labels_unique)
@@ -132,15 +150,19 @@ def _sklearn_meanshift(args):
    label = 0
    cluster_ids = []
    for center in cluster_centers:
+      
+      cluster_sizes[label] = 0
+
       latitude = center[0]
       longitude = center[1]
-      _id = clusters.insert({'center':[latitude, longitude], 'label':label})
+      _id = clusters.insert({'center':[latitude, longitude], 'label':label, 'count':cluster_sizes[label]})
       cluster_ids.append(_id)
       label = label + 1
 
    i = 0
    for _id in ids:
-      print "label " + str(labels[i])
+      #print "label " + str(labels[i])
+      cluster_sizes[labels[i]] = cluster_sizes[labels[i]] + 1
       photos.update({'_id':_id}, {"$set": {'cluster':cluster_ids[labels[i]]}})
       i = i + 1
    print "update " + str(i) + "photo.cluster foreign keys"
@@ -178,6 +200,11 @@ mean_shift_grid.set_defaults(func=do_grid)
 clear_meanshifts = subparsers.add_parser('clear_meanshifts')
 clear_meanshifts.add_argument('region_of_interest_metadata', type=str)
 clear_meanshifts.set_defaults(func=_clear_meanshifts)
+
+# list_meanshifts
+list_meanshifts = subparsers.add_parser('list_meanshifts')
+list_meanshifts.add_argument('region_of_interest_metadata', type=str)
+list_meanshifts.set_defaults(func=_list_meanshifts)
 
 # sklearn_meanshift
 sklearn_meanshift = subparsers.add_parser('sklearn_meanshift')
