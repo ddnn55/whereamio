@@ -14,9 +14,7 @@ import Flickr
 import GeoMeanShift
 
 m = pymongo.Connection()
-mean_shifts = m.ltte.mean_shifts
-photos = m.ltte.photos
-clusters = m.ltte.clusters
+ltte = m.ltte
 
 def run_mean_shift(cell):
    initial_point = cell.center()
@@ -24,13 +22,13 @@ def run_mean_shift(cell):
    lng = initial_point[0]
    print str(lat) + ", " + str(lng)
    ms = GeoMeanShift.GeoMeanShift([lat, lng], 0.005)
-   start_id = mean_shifts.insert( { 'index': 0,  'first': True, 'location': [lat, lng] } )
+   start_id = ltte.mean_shifts.insert( { 'index': 0,  'first': True, 'location': [lat, lng] } )
    print start_id
    i = 1
    while not ms.done() and ms.step():
       lat = ms.current_mean()[0]
       lng = ms.current_mean()[1]
-      mean_shifts.insert( { 'start': start_id, 'index': i,  'location': [lat, lng] } )
+      ltte.mean_shifts.insert( { 'start': start_id, 'index': i,  'location': [lat, lng] } )
       print ms.current_mean()
       i = i + 1
 
@@ -39,14 +37,33 @@ def do_grid(args):
    grid = dgeo.GeoGrid(bbox['left'], bbox['right'], bbox['top'], bbox['bottom'], args.number_across)
    grid.foreach_cell(run_mean_shift)
 
-def _list_meanshifts(args):
-   bbox = json.load(file(args.region_of_interest_metadata))['bbox']
+def load_roi(roi_path):
+   bbox = dgeo.LatLngBoundingBox(json.load(file(roi_path))['bbox'])
+   return bbox
+
+def photos_in_roi(roi_path):
+   bbox = load_roi(roi_path)
+   return ltte.photos.find({
+      'location': {
+         '$within': {
+	    '$box': [
+	       [bbox.bottom, bbox.left],
+	       [bbox.top, bbox.right]
+	    ]
+	 }
+      }
+   })
+
+def clusters_in_bbox(roi_path):
+   bbox = json.load(file(roi_path))['bbox']
    left   = float(bbox['left'])
    right  = float(bbox['right'])
    top    = float(bbox['top'])
    bottom = float(bbox['bottom'])
-   print "listing meanshifts in ROI " + args.region_of_interest_metadata
-   results = clusters.find({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   return ltte.clusters.find({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+
+def _list_meanshifts(args):
+   results = clusters_in_bbox(args.region_of_interest_metadata)
    for ms in results:
       print ms
 
@@ -57,7 +74,7 @@ def _clear_meanshifts(args):
    top    = float(bbox['top'])
    bottom = float(bbox['bottom'])
    print "clearing meanshifts in ROI " + args.region_of_interest_metadata
-   clusters.remove({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
+   ltte.clusters.remove({'center': {'$within': {'$box': [[bottom, left], [top, right]]}}})
 
 def _plot_photos(args):
    #from PIL import Image, ImageDraw
@@ -68,7 +85,7 @@ def _plot_photos(args):
    print "Will color points by cluster: " + str(args.labels)
    colors = dict()
    if args.labels:
-      for cluster in clusters.find():
+      for cluster in ltte.clusters.find():
          if bbox.contains(cluster['center']):
 	    colors[cluster['_id']] = dpy.random_color3f()
 
@@ -77,7 +94,7 @@ def _plot_photos(args):
 
    print "plot photos in ROI " + args.roi_path
    count = 0
-   for photo in photos.find({}, {'location':1, 'cluster':1}):
+   for photo in ltte.photos.find({}, {'location':1, 'cluster':1}):
    #for photo in photos.find():
 
       #print photo['location']
@@ -106,23 +123,20 @@ def _plot_photos(args):
    print "Plotted " + str(count) + " photos to " + image_path
 
 def _sklearn_meanshift(args):
-   
-   
    import numpy as np
    from sklearn.cluster import MeanShift, estimate_bandwidth
    bbox = dgeo.LatLngBoundingBox(json.load(file(args.roi_path))['bbox'])
    
-   #plot = Image.new("L", (1024, int(1024 / bbox.aspect())))
-   plot = np.zeros((1024, int(1024/bbox.aspect())))
-
    print "sklearn MeanShift of ROI " + args.roi_path
    
-   point = photos.find_one()['location']
+   # get points in bbox (move to MongoDB query!)
+   point = ltte.photos.find_one()['location']
    points = None
    ids = []
    count = 0
-   for photo in photos.find({}, {'location':1}):
-      if bbox.contains(photo['location']):
+   #for photo in photos.find({}, {'location':1}):
+      #if bbox.contains(photo['location']):
+   for photo in photos_in_roi(args.roi_path):
 	 if points == None:
 	    points = np.array(photo['location'])
 	 else:
@@ -130,11 +144,13 @@ def _sklearn_meanshift(args):
 	 ids.append(photo['_id'])
          count = count + 1
 
+   # do meanshift
    ms = MeanShift(bandwidth=0.003, bin_seeding=True)
    ms.fit(points)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
-   
+  
+   # count photos per cluster
    cluster_sizes = [ 0 for center in cluster_centers ]
    for label in labels:
      cluster_sizes[label] = cluster_sizes[label] + 1
@@ -151,7 +167,7 @@ def _sklearn_meanshift(args):
       
       latitude = center[0]
       longitude = center[1]
-      _id = clusters.insert({'center':[latitude, longitude], 'label':label, 'count':cluster_sizes[label]})
+      _id = ltte.clusters.insert({'center':[latitude, longitude], 'label':label, 'count':cluster_sizes[label]})
       cluster_ids.append(_id)
       label = label + 1
 
@@ -159,7 +175,7 @@ def _sklearn_meanshift(args):
    for _id in ids:
       #print "label " + str(labels[i])
       cluster_sizes[labels[i]] = cluster_sizes[labels[i]] + 1
-      photos.update({'_id':_id}, {"$set": {'cluster':cluster_ids[labels[i]]}})
+      ltte.photos.update({'_id':_id}, {"$set": {'cluster':cluster_ids[labels[i]]}})
       i = i + 1
    print "update " + str(i) + "photo.cluster foreign keys"
 
@@ -174,9 +190,9 @@ def _random_photos(args):
     #print "cp " + image.jpg_path() + " " + args.destination_directory + "/" + image.flickr_locator_string() + ".jpg"
 
 def random_photo():
-  count = photos.count()
+  count = ltte.photos.count()
   index = random.randint(0, count)
-  random_photo = photos.find().skip(index).limit(1).next()
+  random_photo = ltte.photos.find().skip(index).limit(1).next()
   return Flickr.MirroredPhoto(random_photo)
 
 parser = argparse.ArgumentParser()
