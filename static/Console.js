@@ -120,16 +120,22 @@ function initialize() {
         centers = []
         console.log(data.length + " centers in window")
         for (var i = 0; i < data.length; i++) {
-            var center = data[i]['center'];
-            var _id = data[i]['_id'];
+	    var cluster = data[i];
+            var center = cluster['center'];
+            var _id = cluster['_id'];
+            var radius = 'count' in cluster ? cluster['count'] / 10.0 : 100.0;
+
             var circleOpts = {
                 center: new google.maps.LatLng(center[0], center[1]),
-                radius: 100,
+                radius: radius,
 		map: map
             }
             var circle = new google.maps.Circle(circleOpts);
             attachLink(circle, _id);
             centers.push(circle);
+
+            console.log('pushed circle');
+
    /*         var path = [];
             for (p in rawPath) {
                 path.push(new google.maps.LatLng(rawPath[p][0], rawPath[p][1]));

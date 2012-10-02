@@ -50,8 +50,6 @@ def _list_meanshifts(args):
    for ms in results:
       print ms
 
-
-
 def _clear_meanshifts(args):
    bbox = json.load(file(args.region_of_interest_metadata))['bbox']
    left   = float(bbox['left'])
@@ -151,8 +149,6 @@ def _sklearn_meanshift(args):
    cluster_ids = []
    for center in cluster_centers:
       
-      cluster_sizes[label] = 0
-
       latitude = center[0]
       longitude = center[1]
       _id = clusters.insert({'center':[latitude, longitude], 'label':label, 'count':cluster_sizes[label]})

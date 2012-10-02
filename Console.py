@@ -65,8 +65,9 @@ def sklearn_mean_shifts_json():
    _clusters = []
    #for cluster in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
    for cluster in clusters.find():
-      point = {'center': cluster['center'], '_id': str(cluster['_id'])}
-      _clusters.append(point)
+      cluster_JSON_able = cluster
+      cluster_JSON_able['_id'] = str(cluster['_id'])
+      _clusters.append(cluster_JSON_able)
    return json.dumps(_clusters)
 
 @app.route('/cluster/<cluster_id>')
