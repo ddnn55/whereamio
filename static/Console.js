@@ -22,13 +22,6 @@ function initialize() {
     function update() {
         //$('#image_count').load('/image_count');
 
-
-
-
-
-
-
-
         $.getJSON('/mines.json', function (data) {
 
             for (r in rectangles) {
@@ -104,7 +97,7 @@ function initialize() {
     }
 
 
-    var centers = [];
+    var clusters = [];
 
     function attachLink(circle, _id){
        google.maps.event.addListener(circle, 'click', function (e) {
@@ -113,28 +106,52 @@ function initialize() {
     }
 
 
-    function handle_centers(data) {
-        for (c in centers) {
-            centers[c].setMap(null);
+    function clearClusters()
+    {
+        for (c in clusters) {
+            clusters[c].setMap(null);
         }
-        centers = []
-        console.log(data.length + " centers in window")
-        for (var i = 0; i < data.length; i++) {
-	    var cluster = data[i];
+        clusters = [];
+    }
+
+    function handle_clusters(data) {
+       clearClusters();
+
+       console.log(data.length + " clusters in window")
+        for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
+	    // parse cluster
+	    var cluster = data[clusterIndex];
             var center = cluster['center'];
             var _id = cluster['_id'];
             var radius = 'count' in cluster ? cluster['count'] / 10.0 : 100.0;
-
-            var circleOpts = {
+            if('convex_hull' in cluster && cluster['convex_hull'].length > 0)
+	    {
+	       // convex hull
+	       convex_hull = cluster['convex_hull'];
+               var coords = [];
+	       for(var pointIndex = 0; pointIndex < convex_hull.length; pointIndex++)
+	       {
+	          var point = convex_hull[pointIndex];
+                  coords.push(new google.maps.LatLng(point[0], point[1]));
+	       }
+	       var polygon = new google.maps.Polygon({
+                  paths: coords,
+		  strokeWeight: 0.5,
+		  map: map
+	       });
+               attachLink(polygon, _id);
+	       clusters.push(polygon);
+	    }
+            
+            // create cluster's circle
+            /*var circleOpts = {
                 center: new google.maps.LatLng(center[0], center[1]),
                 radius: radius,
 		map: map
             }
             var circle = new google.maps.Circle(circleOpts);
             attachLink(circle, _id);
-            centers.push(circle);
-
-            console.log('pushed circle');
+            clusters.push(circle);*/
 
    /*         var path = [];
             for (p in rawPath) {
@@ -157,7 +174,7 @@ function initialize() {
 
 
 
-    function requestCenters() {
+    function requestClusters() {
         var params;
         var bounds = map.getBounds();
         if (typeof bounds !== "undefined") {
@@ -172,8 +189,8 @@ function initialize() {
             console.log("bounds undefined!!!!!");
         }
 
-        console.log("about to do centers request");
-        $.getJSON('/clusters', params, handle_centers);
+        console.log("about to do clusters request");
+        $.getJSON('/clusters', params, handle_clusters);
     }
 
 
@@ -279,13 +296,15 @@ function initialize() {
             });
 
         }
-
-
     });
 
-    update();
+    $('#refresh').click(function () {
+        requestClusters();
+    });
 
-    setTimeout(requestCenters, 2000);
+    //update();
+
+    setTimeout(requestClusters, 2000);
 
     //setTimeout(requestMeanshifts, 2000);
 

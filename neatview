@@ -12,6 +12,8 @@ import dgeo
 import dpy
 import Flickr
 import GeoMeanShift
+from convex_hull import convex_hull
+from convexhull import convexHull
 
 m = pymongo.Connection()
 ltte = m.ltte
@@ -142,33 +144,51 @@ def _sklearn_meanshift(args):
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_
   
-   # count photos per cluster
+   # organize/count photos by cluster
    cluster_points = [ [] for center in cluster_centers ]
    cluster_sizes = [ 0 for center in cluster_centers ]
-   #for cluster_index in labels:
    for p in range(0, len(labels)):
      cluster_index = labels[p]
      cluster_sizes[cluster_index] = cluster_sizes[cluster_index] + 1
      
-     location = photo_locations[p]
-     cluster_points[cluster_index].append(location)
-   print cluster_sizes
+     point = photo_locations[p]
+     cluster_points[cluster_index].append(point)
 
+   # compute convex hull of each cluster
+   convex_hulls = []
+   for points in cluster_points:
+     if len(points) < 6:
+       convex_hulls.append([])
+     else:
+       #_convex_hull = convex_hull(np.transpose(np.array(points)))
+       _convex_hull = convexHull(points)
+       #print _convex_hull
+       print "Convex hull of " + str(len(points)) + " points has " + str(len(_convex_hull)) + " points"
+       convex_hulls.append(_convex_hull)
+
+   # print stats
    labels_unique = np.unique(labels)
    n_clusters_ = len(labels_unique)
-
    print "number of clusters : %d" % n_clusters_
    print "number of photos : %d" % len(labels)
+   
+   # insert clusters in DB
    label = 0
    cluster_ids = []
    for center in cluster_centers:
       
       latitude = center[0]
       longitude = center[1]
-      _id = ltte.clusters.insert({'center':[latitude, longitude], 'label':label, 'count':cluster_sizes[label]})
+      _id = ltte.clusters.insert({
+        'center': [latitude, longitude],
+	'label':label,
+	'count':cluster_sizes[label],
+	'convex_hull':convex_hulls[label]
+      })
       cluster_ids.append(_id)
       label = label + 1
 
+   # set photos' cluster foreign keys
    i = 0
    for _id in ids:
       #print "label " + str(labels[i])

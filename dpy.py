@@ -18,3 +18,14 @@ def random_item(items):
 
 def random_color3f():
    return (random.random(), random.random(), random.random())
+
+def without_adjacent_duplicates(list_in):
+  list_out = []
+  initialized = False
+  previous_item = None
+  for item in list_in:
+    if not initialized or item != previous_item:
+      list_out.append(item)
+      initialized = True
+    previous_item = item
+  return list_out
