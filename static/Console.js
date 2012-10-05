@@ -308,6 +308,8 @@ function initialize() {
 
     //setTimeout(requestMeanshifts, 2000);
 
+    initNV();
+    animateNV();
 
 };
 
