@@ -12,8 +12,6 @@ import dgeo
 import dpy
 import Flickr
 import GeoMeanShift
-from convex_hull import convex_hull
-from convexhull import convexHull
 
 m = pymongo.Connection()
 ltte = m.ltte
@@ -119,6 +117,8 @@ def _plot_photos(args):
 def _sklearn_meanshift(args):
    import numpy as np
    from sklearn.cluster import MeanShift, estimate_bandwidth
+   from convexhull import convexHull
+
    bbox = dgeo.LatLngBoundingBox(json.load(file(args.roi_path))['bbox'])
    
    print "sklearn MeanShift of ROI " + args.roi_path
@@ -152,16 +152,22 @@ def _sklearn_meanshift(args):
      cluster_sizes[cluster_index] = cluster_sizes[cluster_index] + 1
      
      point = photo_locations[p]
-     cluster_points[cluster_index].append(point)
+     cluster_points[cluster_index].append(tuple(point.tolist()))
 
    # compute convex hull of each cluster
    convex_hulls = []
    for points in cluster_points:
-     if len(points) < 6:
-       convex_hulls.append([])
+     #print "----------------"
+     #print points
+     points_unique = list(set(points))
+     #print "points len: " + str(len(points))
+     #print "unique_points len: " + str(len(points_unique))
+
+     if len(points_unique) < 4:
+       convex_hulls.append(points_unique)
      else:
        #_convex_hull = convex_hull(np.transpose(np.array(points)))
-       _convex_hull = convexHull(points)
+       _convex_hull = convexHull(points_unique)
        #print _convex_hull
        print "Convex hull of " + str(len(points)) + " points has " + str(len(_convex_hull)) + " points"
        convex_hulls.append(_convex_hull)
