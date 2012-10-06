@@ -121,8 +121,6 @@ def random():
     photo = dpy.random_item(os.listdir("data/flickr_mirror/" + farm + "/" + server))
     image_path = "data/flickr_mirror/" + farm + "/" + server + "/" + photo + "/b.jpg"
     return file(image_path).read()
-    return photo
-    server = dpy.random_item(os.path.listdir("data/flickr_mirror"))
 
 @app.route('/delete_all_mines')
 def delete_all():
