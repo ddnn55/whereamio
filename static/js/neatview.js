@@ -61,42 +61,50 @@ function NVMakeClusters(clusters)
   {
     var cluster = clusters[c];
     if('convex_hull' in cluster)
-      NVMakeCluster(cluster);
+    {
+      var convexHull = cluster['convex_hull'];
+      //console.log(cluster['convex_hull'].length);
+      if(cluster['convex_hull'].length >= 3)
+      {
+        NVMakeCluster(cluster);
+      }
+    }
   }
 }
 
 function NVMakeCluster(cluster)
 {
   var convexHull = cluster['convex_hull'];
- 
+
+
   var mapBounds = map.getBounds();
 
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
   
-  canvasClusterCenter = latLngToCanvasXY(cluster.center);
- 
-
-  // put something at center just to see
-  geometry = new THREE.PlaneGeometry( 0.001, 0.001, 5, 5 );
-  var texture = new THREE.ImageUtils.loadTexture( '/random' );
-  material = new THREE.MeshBasicMaterial( { map:texture } );
-
-  mesh = new THREE.Mesh( geometry, material );
-  //mesh.position.x = canvasClusterCenter.x;
-  //mesh.position.y = canvasClusterCenter.y;
-  mesh.position.x = cluster.center[1];
-  mesh.position.y = cluster.center[0];
-  scene.add( mesh );
-
-
   // do mesh of convex hull
-  for(var p = 0; p < convexHull.length; p++)
+  for(var p = 0; p < convexHull.length && p < 3; p++)
   {
     var point = convexHull[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
   }
   geometry.faces.push( new THREE.Face3( 0, 1, 2 ) );
+
+  var texture = new THREE.ImageUtils.loadTexture( '/random' );
+  var material = new THREE.MeshBasicMaterial({
+    //map:texture,
+    color:0xcc1111
+  });
+ 
+  geometry.computeBoundingSphere();
+  geometry.computeBoundingBox();
+
+  mesh = new THREE.Mesh( geometry, material );
+  mesh.position.x = 0.0;
+  mesh.position.y = 0.0;
+  
+  scene.add( mesh );
+
 }
 
 function animateNV() {
