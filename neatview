@@ -139,7 +139,7 @@ def _sklearn_meanshift(args):
          count = count + 1
 
    # do meanshift
-   ms = MeanShift(bandwidth=0.001, bin_seeding=True)
+   ms = MeanShift(bandwidth=0.003, bin_seeding=True)
    ms.fit(photo_locations)
    labels = ms.labels_
    cluster_centers = ms.cluster_centers_

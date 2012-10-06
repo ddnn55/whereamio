@@ -1,3 +1,5 @@
+
+
 function date_string_to_timestamp(str) {
     var parts = str.split('/');
     return new Date(parts[2], parts[0] - 1, parts[1], 0, 0, 0, 0).getTime() / 1000;
@@ -14,7 +16,8 @@ function initialize() {
         mapTypeId: google.maps.MapTypeId.ROADMAP
     };
 
-    var map = new google.maps.Map(document.getElementById('map_canvas'), mapOptions);
+    map = new google.maps.Map(document.getElementById('map_canvas'), mapOptions);
+
 
     var rectangles = [];
     var mean_shift_paths = [];
@@ -117,8 +120,11 @@ function initialize() {
     function handle_clusters(data) {
        clearClusters();
 
-       console.log(data.length + " clusters in window")
-        for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
+       console.log(data.length + " clusters in window");
+        
+	NVMakeClusters(data);
+        
+	for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
 	    // parse cluster
 	    var cluster = data[clusterIndex];
             var center = cluster['center'];
@@ -128,6 +134,8 @@ function initialize() {
 	    {
 	       // convex hull
 	       convex_hull = cluster['convex_hull'];
+
+
                var coords = [];
 	       for(var pointIndex = 0; pointIndex < convex_hull.length; pointIndex++)
 	       {
