@@ -4,7 +4,10 @@
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
     <title>LTTE Console</title>
+    
     <link type="text/css" href="static/css/smoothness/jquery-ui-1.8.23.custom.css" rel="stylesheet" />
+    <link type="text/css" href="static/css/neatview.css" rel="stylesheet" />
+    
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCkETvZyOg_-XCWnwlTRFKbnO-sMlGOqvk&sensor=false"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
     <script type="text/javascript" src="static/js/jquery-ui-1.8.23.custom.min.js"></script>
@@ -35,7 +38,13 @@
        <br><br><br><br><br>
        <button id="refresh">Refresh Clusters</button>
     </div>
+    
+    
     <div style="position:absolute; left:0; right:300px; top:0; bottom:0;" id="map_canvas"></div>
+    <div style="position:absolute; left:0; right:300px; top:0; bottom:0;" id="three_container">
+      <canvas width="500" height="500" id="three_canvas">
+    </div>
+  
   </body>
 </html>
 

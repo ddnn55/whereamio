@@ -17,10 +17,14 @@ function initNV() {
   mesh = new THREE.Mesh( geometry, material );
   scene.add( mesh );
 
-  renderer = new THREE.CanvasRenderer();
-  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('three_canvas')
+  });
+  //renderer.setSize( window.innerWidth, window.innerHeight );
+  //renderer.domElement.id = "three";
 
-  document.body.appendChild( renderer.domElement );
+  //document.body.appendChild( renderer.domElement );
+
 
 }
 
