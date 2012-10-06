@@ -145,6 +145,8 @@ function initialize() {
 	       var polygon = new google.maps.Polygon({
                   paths: coords,
 		  strokeWeight: 0.5,
+		  fillOpacity:0.0,
+		  strokeOpacity:0.0, // let THREE draw cool stuff, this poly just takes mouse events
 		  map: map
 	       });
                attachLink(polygon, _id);

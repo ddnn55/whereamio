@@ -76,24 +76,25 @@ function NVMakeCluster(cluster)
 {
   var convexHull = cluster['convex_hull'];
 
-
-  var mapBounds = map.getBounds();
-
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
   
   // do mesh of convex hull
-  for(var p = 0; p < convexHull.length && p < 3; p++)
+  var p;
+  for(p = 0; p < convexHull.length; p++)
   {
     var point = convexHull[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+    if(p > 0)
+      geometry.faces.push( new THREE.Face3( 0, p, p+1 ) );
   }
-  geometry.faces.push( new THREE.Face3( 0, 1, 2 ) );
+  geometry.faces.push( new THREE.Face3( 0, p, 1 ) );
+
 
   var texture = new THREE.ImageUtils.loadTexture( '/random' );
   var material = new THREE.MeshBasicMaterial({
     //map:texture,
-    color:0xcc1111
+    color:0x991111
   });
  
   geometry.computeBoundingSphere();
