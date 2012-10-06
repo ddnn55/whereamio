@@ -30,11 +30,28 @@ function initNV() {
     canvas: canvas
   });
 
+  google.maps.event.addListener(map, 'bounds_changed', function() {
+
+    mapBounds = {};
+    mapBounds.left   = map.getBounds().getSouthWest().lng();
+    mapBounds.bottom = map.getBounds().getSouthWest().lat();
+    mapBounds.right  = map.getBounds().getNorthEast().lng();
+    mapBounds.top    = map.getBounds().getNorthEast().lat();
+    
+    canvas.width  = $('#map_canvas').width();
+    canvas.height = $('#map_canvas').height();
+    
+    camera.left = mapBounds.left;
+    camera.right = mapBounds.right;
+    camera.top = mapBounds.top;
+    camera.bottom = mapBounds.bottom;
+    camera.updateProjectionMatrix();
+  });
+
 }
 
 function NVMakeClusters(clusters)
 {
-    mapBounds = {};
     mapBounds.left   = map.getBounds().getSouthWest().lng();
     mapBounds.bottom = map.getBounds().getSouthWest().lat();
     mapBounds.right  = map.getBounds().getNorthEast().lng();
@@ -61,13 +78,15 @@ function NVMakeCluster(cluster)
  
 
   // put something at center just to see
-  geometry = new THREE.PlaneGeometry( 30.0, 30.0, 5, 5 );
+  geometry = new THREE.PlaneGeometry( 0.001, 0.001, 5, 5 );
   var texture = new THREE.ImageUtils.loadTexture( '/random' );
   material = new THREE.MeshBasicMaterial( { map:texture } );
 
   mesh = new THREE.Mesh( geometry, material );
-  mesh.position.x = canvasClusterCenter.x;
-  mesh.position.y = canvasClusterCenter.y;
+  //mesh.position.x = canvasClusterCenter.x;
+  //mesh.position.y = canvasClusterCenter.y;
+  mesh.position.x = cluster.center[1];
+  mesh.position.y = cluster.center[0];
   scene.add( mesh );
 
 
