@@ -1,6 +1,6 @@
 var map, mapBounds;
 var camera, scene, renderer, canvas;
-var geometry, material, mesh;
+var geometry, material, mesh, texture;
 
 function latLngToCanvasXY(latLng)
 {
@@ -57,6 +57,8 @@ function NVMakeClusters(clusters)
     mapBounds.right  = map.getBounds().getNorthEast().lng();
     mapBounds.top    = map.getBounds().getNorthEast().lat();
 
+  texture = new THREE.ImageUtils.loadTexture( '/random' );
+  
   for(var c = 0; c < clusters.length; c++)
   {
     var cluster = clusters[c];
@@ -85,13 +87,13 @@ function NVMakeCluster(cluster)
   {
     var point = convexHull[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
-    if(p > 0)
-      geometry.faces.push( new THREE.Face3( 0, p, p+1 ) );
   }
-  geometry.faces.push( new THREE.Face3( 0, p, 1 ) );
+  for(var f = 1; f <= convexHull.length; f++)
+  {
+      geometry.faces.push( new THREE.Face3( 0, f, (f % convexHull.length) + 1 ) );
+  }
 
 
-  //var texture = new THREE.ImageUtils.loadTexture( '/random' );
   var material = new THREE.MeshBasicMaterial({
     //map:texture,
     transparent: true,
