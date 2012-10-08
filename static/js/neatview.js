@@ -154,7 +154,7 @@ function NVMakeCluster(cluster)
     //map: testTexture,
     map: clusterTexture,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.9,
     //color: 0x991111
   });
  

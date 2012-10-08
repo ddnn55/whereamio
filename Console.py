@@ -86,12 +86,13 @@ def cluster(cluster_id):
    return html
 
 @app.route('/cluster/<cluster_id>/random_image')
-def cluster(cluster_id):
+def cluster_random_image(cluster_id):
   cluster_id = objectid.ObjectId(cluster_id)
   #for photo in photos.find_one({'cluster':cluster_id}):
   photo = photos.find_one({'cluster':cluster_id})
   mi = Flickr.MirroredPhoto(photo)
   image_url = '/static/flickr/' + mi.flickr_locator_path() + '/b.jpg'
+  print "gonna redirect"
   return redirect(image_url)
   
 
