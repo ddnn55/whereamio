@@ -80,25 +80,48 @@ function NVMakeCluster(cluster)
 
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
-  
+ 
+  var left, right, top, bottom;
+  left   = cluster.center[1];
+  right  = cluster.center[1];
+  top    = cluster.center[0];
+  bottom = cluster.center[0];
+
   // do mesh of convex hull
-  var p;
+  var p, uv = [];
   for(p = 0; p < convexHull.length; p++)
   {
     var point = convexHull[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+    left   = Math.min(left, point[1]);
+    right  = Math.max(left, point[1]);
+    top    = Math.max(top, point[0]);
+    bottom = Math.min(bottom, point[0]);
+  }
+  for(var v = 0; v < geometry.vertices.length; v++)
+  {
+    var vertex = geometry.vertices[v];
+    uv.push( new THREE.UV( (vertex.x - left) / (right - left), (vertex.y - bottom) / (top - bottom) ) );
   }
   for(var f = 1; f <= convexHull.length; f++)
   {
-      geometry.faces.push( new THREE.Face3( 0, f, (f % convexHull.length) + 1 ) );
+    var v1 = f;
+    var v2 = (f % convexHull.length) + 1;
+
+    geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
+    geometry.faceVertexUvs[ 0 ].push([
+      uv[0],
+      uv[v1],
+      uv[v2]
+    ]);
   }
 
 
   var material = new THREE.MeshBasicMaterial({
-    //map:texture,
+    map:texture,
     transparent: true,
-    opacity: 0.3,
-    color: 0x991111
+    opacity: 0.7,
+    //color: 0x991111
   });
  
   geometry.computeBoundingSphere();
