@@ -94,7 +94,7 @@ function NVMakeCluster(cluster)
     var point = convexHull[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
     left   = Math.min(left, point[1]);
-    right  = Math.max(left, point[1]);
+    right  = Math.max(right, point[1]);
     top    = Math.max(top, point[0]);
     bottom = Math.min(bottom, point[0]);
   }
