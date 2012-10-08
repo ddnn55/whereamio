@@ -46,6 +46,7 @@ function initNV() {
     camera.right = mapBounds.right;
     camera.top = mapBounds.top;
     camera.bottom = mapBounds.bottom;
+
     camera.updateProjectionMatrix();
   });
 
@@ -58,8 +59,10 @@ function NVMakeClusters(clusters)
   mapBounds.right  = map.getBounds().getNorthEast().lng();
   mapBounds.top    = map.getBounds().getNorthEast().lat();
 
-  texture = new THREE.ImageUtils.loadTexture( '/random' );
-  $('#image_debug').html('<img width="100%" src="/random" />');
+  //var imageUrl = "/static/img/grid.png";
+  var imageUrl = "/random";
+  texture = new THREE.ImageUtils.loadTexture( imageUrl );
+  $('#image_debug').html('<img width="100%" src="'+imageUrl+'" />');
 
   for(var c = 0; c < clusters.length; c++)
   {
@@ -99,31 +102,32 @@ function NVMakeCluster(cluster)
     top    = Math.max(top, point[0]);
     bottom = Math.min(bottom, point[0]);
   }
-  var aspect = (right - left) / (top - bottom);
+  var latLngAspect = dgeo.okProjectionAspect(left, right, top, bottom);
+  //var aspect = (right - left) / (top - bottom);
   var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
-  if(aspect > 1.0)
+  if(latLngAspect > 1.0)
   {
-    var uvHeight = 1.0 / aspect;
+    var uvHeight = 1.0 / latLngAspect;
     uvBottom = (1.0 - uvHeight) / 2.0;
     uvTop = 1.0 - uvBottom;
   }
   else
   {
-    var uvWidth = aspect;
+    var uvWidth = latLngAspect;
     uvLeft = (1.0 - uvWidth) / 2.0;
     uvRight = 1.0 - uvLeft;
   }
   for(var v = 0; v < geometry.vertices.length; v++)
   {
     var vertex = geometry.vertices[v];
-    if(aspect > 1.0)
+    if(latLngAspect > 1.0)
       uv.push(new THREE.UV(
         (vertex.x - left) / (right - left),
-        uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
+        uvBottom + ((vertex.y - bottom) / (top - bottom)) / latLngAspect
       ));
     else
       uv.push(new THREE.UV(
-        uvLeft + aspect * (vertex.x - left) / (right - left),
+        uvLeft + latLngAspect * (vertex.x - left) / (right - left),
         (vertex.y - bottom) / (top - bottom)
       ));
   }
