@@ -157,19 +157,12 @@ def _sklearn_meanshift(args):
    # compute convex hull of each cluster
    convex_hulls = []
    for points in cluster_points:
-     #print "----------------"
-     #print points
      points_unique = list(set(points))
-     #print "points len: " + str(len(points))
-     #print "unique_points len: " + str(len(points_unique))
 
      if len(points_unique) < 4:
        convex_hulls.append(points_unique)
      else:
-       #_convex_hull = convex_hull(np.transpose(np.array(points)))
        _convex_hull = convexHull(points_unique)
-       #print _convex_hull
-       print "Convex hull of " + str(len(points)) + " points has " + str(len(_convex_hull)) + " points"
        convex_hulls.append(_convex_hull)
 
    # print stats

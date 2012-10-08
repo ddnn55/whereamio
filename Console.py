@@ -7,8 +7,7 @@ import calendar
 import json
 import random
 #import web
-from flask import Flask
-from flask import request
+from flask import Flask, request, redirect
 
 import redis
 import pymongo
@@ -18,7 +17,7 @@ import dpy
 import boundary
 from dgeo import GeoGrid
 
-#import Flickr
+import Flickr
 import GeoMeanShift
 
 
@@ -72,7 +71,6 @@ def sklearn_mean_shifts_json():
 
 @app.route('/cluster/<cluster_id>')
 def cluster(cluster_id):
-   import Flickr
    html = '<link type="text/css" href="/static/css/cluster.css" rel="stylesheet" />'
    count = 0
    oid = objectid.ObjectId(cluster_id)
@@ -86,6 +84,16 @@ def cluster(cluster_id):
       count = count + 1
    html = str(count) + "<br>" + html
    return html
+
+@app.route('/cluster/<cluster_id>/random_image')
+def cluster(cluster_id):
+  cluster_id = objectid.ObjectId(cluster_id)
+  #for photo in photos.find_one({'cluster':cluster_id}):
+  photo = photos.find_one({'cluster':cluster_id})
+  mi = Flickr.MirroredPhoto(photo)
+  image_url = '/static/flickr/' + mi.flickr_locator_path() + '/b.jpg'
+  return redirect(image_url)
+  
 
 @app.route('/mean_shifts.json', methods=['GET'])
 def mean_shifts_json():

@@ -1,6 +1,6 @@
 var map, mapBounds;
 var camera, scene, renderer, canvas;
-var geometry, material, mesh, texture;
+var geometry, material, mesh, testTexture;
 
 function latLngToCanvasXY(latLng)
 {
@@ -61,7 +61,7 @@ function NVMakeClusters(clusters)
 
   //var imageUrl = "/static/img/grid.png";
   var imageUrl = "/random";
-  texture = new THREE.ImageUtils.loadTexture( imageUrl );
+  testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
   $('#image_debug').html('<img width="100%" src="'+imageUrl+'" />');
 
   for(var c = 0; c < clusters.length; c++)
@@ -81,6 +81,11 @@ function NVMakeClusters(clusters)
 function NVMakeCluster(cluster)
 {
   var convexHull = cluster['convex_hull'];
+
+  var imageUrl = "/cluster/" + cluster['_id'] + "/random_image";
+  console.log(imageUrl);
+  var clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
+  
 
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
@@ -146,9 +151,10 @@ function NVMakeCluster(cluster)
 
 
   var material = new THREE.MeshBasicMaterial({
-    map:texture,
+    //map: testTexture,
+    map: clusterTexture,
     transparent: true,
-    opacity: 1.0,
+    opacity: 0.5,
     //color: 0x991111
   });
  
