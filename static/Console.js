@@ -314,12 +314,13 @@ function initialize() {
 
     //update();
 
-    setTimeout(requestClusters, 2000);
 
     //setTimeout(requestMeanshifts, 2000);
 
     initNV();
     animateNV();
 
+    setTimeout(requestClusters, 1000);
+    //requestClusters();
 };
 

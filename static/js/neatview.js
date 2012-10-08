@@ -91,10 +91,12 @@ function NVMakeCluster(cluster)
   geometry.faces.push( new THREE.Face3( 0, p, 1 ) );
 
 
-  var texture = new THREE.ImageUtils.loadTexture( '/random' );
+  //var texture = new THREE.ImageUtils.loadTexture( '/random' );
   var material = new THREE.MeshBasicMaterial({
     //map:texture,
-    color:0x991111
+    transparent: true,
+    opacity: 0.3,
+    color: 0x991111
   });
  
   geometry.computeBoundingSphere();
