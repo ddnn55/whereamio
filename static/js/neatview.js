@@ -27,7 +27,8 @@ function initNV() {
   camera = new THREE.OrthographicCamera( 0, canvas.width, canvas.height, 0, -1, 1 );
   scene = new THREE.Scene();
   renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: true
   });
 
   google.maps.event.addListener(map, 'bounds_changed', function() {
@@ -66,7 +67,6 @@ function NVMakeClusters(clusters)
     if('convex_hull' in cluster)
     {
       var convexHull = cluster['convex_hull'];
-      //console.log(cluster['convex_hull'].length);
       if(cluster['convex_hull'].length >= 3)
       {
         NVMakeCluster(cluster);
