@@ -52,13 +52,14 @@ function initNV() {
 
 function NVMakeClusters(clusters)
 {
-    mapBounds.left   = map.getBounds().getSouthWest().lng();
-    mapBounds.bottom = map.getBounds().getSouthWest().lat();
-    mapBounds.right  = map.getBounds().getNorthEast().lng();
-    mapBounds.top    = map.getBounds().getNorthEast().lat();
+  mapBounds.left   = map.getBounds().getSouthWest().lng();
+  mapBounds.bottom = map.getBounds().getSouthWest().lat();
+  mapBounds.right  = map.getBounds().getNorthEast().lng();
+  mapBounds.top    = map.getBounds().getNorthEast().lat();
 
   texture = new THREE.ImageUtils.loadTexture( '/random' );
-  
+  $('#image_debug').html('<img width="100%" src="/random" />');
+
   for(var c = 0; c < clusters.length; c++)
   {
     var cluster = clusters[c];
@@ -98,10 +99,33 @@ function NVMakeCluster(cluster)
     top    = Math.max(top, point[0]);
     bottom = Math.min(bottom, point[0]);
   }
+  var aspect = (right - left) / (top - bottom);
+  var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
+  if(aspect > 1.0)
+  {
+    var uvHeight = 1.0 / aspect;
+    uvBottom = (1.0 - uvHeight) / 2.0;
+    uvTop = 1.0 - uvBottom;
+  }
+  else
+  {
+    var uvWidth = aspect;
+    uvLeft = (1.0 - uvWidth) / 2.0;
+    uvRight = 1.0 - uvLeft;
+  }
   for(var v = 0; v < geometry.vertices.length; v++)
   {
     var vertex = geometry.vertices[v];
-    uv.push( new THREE.UV( (vertex.x - left) / (right - left), (vertex.y - bottom) / (top - bottom) ) );
+    if(aspect > 1.0)
+      uv.push(new THREE.UV(
+        (vertex.x - left) / (right - left),
+        uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
+      ));
+    else
+      uv.push(new THREE.UV(
+        uvLeft + aspect * (vertex.x - left) / (right - left),
+        (vertex.y - bottom) / (top - bottom)
+      ));
   }
   for(var f = 1; f <= convexHull.length; f++)
   {
@@ -120,7 +144,7 @@ function NVMakeCluster(cluster)
   var material = new THREE.MeshBasicMaterial({
     map:texture,
     transparent: true,
-    opacity: 0.7,
+    opacity: 1.0,
     //color: 0x991111
   });
  
