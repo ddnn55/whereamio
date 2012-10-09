@@ -39,8 +39,9 @@ function initNV() {
     mapBounds.right  = map.getBounds().getNorthEast().lng();
     mapBounds.top    = map.getBounds().getNorthEast().lat();
     
-    canvas.width  = $('#map_canvas').width();
-    canvas.height = $('#map_canvas').height();
+    //canvas.width  = $('#map_canvas').width();
+    //canvas.height = $('#map_canvas').height();
+    renderer.setSize($('#map_canvas').width(), $('#map_canvas').height());
     
     camera.left = mapBounds.left;
     camera.right = mapBounds.right;
@@ -48,6 +49,8 @@ function initNV() {
     camera.bottom = mapBounds.bottom;
 
     camera.updateProjectionMatrix();
+
+    console.log("updated projection matrix");
   });
 
 }
@@ -59,7 +62,8 @@ function NVMakeClusters(clusters)
   mapBounds.right  = map.getBounds().getNorthEast().lng();
   mapBounds.top    = map.getBounds().getNorthEast().lat();
 
-  //var imageUrl = "/static/img/grid.png";
+  var imageUrl = "static/img/grid_tall.png";
+  testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
   for(var c = 0; c < clusters.length; c++)
   {
@@ -82,8 +86,10 @@ function NVMakeCluster(cluster)
   // can't put a flickr.com URL here unless they enable CORS :(
   // http://enable-cors.org/
   var imageUrl = cluster['image_url'];
-
   var clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
+  //var clusterTexture = testTexture;
+  //var imageAspect = clusterTexture.image.width / clusterTexture.image.height;
+  //var imageAspect = 0.5 / 1.0;
 
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
@@ -105,32 +111,39 @@ function NVMakeCluster(cluster)
     top    = Math.max(top, point[0]);
     bottom = Math.min(bottom, point[0]);
   }
-  var latLngAspect = dgeo.okProjectionAspect(left, right, top, bottom);
-  //var aspect = (right - left) / (top - bottom);
+  //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
+  var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
+  var pixelAspect = canvas.width / canvas.height;
+  var aspectCorrection = pixelAspect / latLngAspect;
+
+  //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
+
+  var aspect = (right - left) / (top - bottom);
+  aspect *= aspectCorrection /*/ imageAspect*/;
   var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
-  if(latLngAspect > 1.0)
+  if(aspect > 1.0)
   {
-    var uvHeight = 1.0 / latLngAspect;
+    var uvHeight = 1.0 / aspect;
     uvBottom = (1.0 - uvHeight) / 2.0;
     uvTop = 1.0 - uvBottom;
   }
   else
   {
-    var uvWidth = latLngAspect;
+    var uvWidth = aspect;
     uvLeft = (1.0 - uvWidth) / 2.0;
     uvRight = 1.0 - uvLeft;
   }
   for(var v = 0; v < geometry.vertices.length; v++)
   {
     var vertex = geometry.vertices[v];
-    if(latLngAspect > 1.0)
+    if(aspect > 1.0)
       uv.push(new THREE.UV(
         (vertex.x - left) / (right - left),
-        uvBottom + ((vertex.y - bottom) / (top - bottom)) / latLngAspect
+        uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
       ));
     else
       uv.push(new THREE.UV(
-        uvLeft + latLngAspect * (vertex.x - left) / (right - left),
+        uvLeft + aspect * (vertex.x - left) / (right - left),
         (vertex.y - bottom) / (top - bottom)
       ));
   }
