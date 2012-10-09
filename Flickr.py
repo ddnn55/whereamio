@@ -183,16 +183,31 @@ class FlickrPhoto:
 class MirroredPhoto:
 
    def __init__(self, dbjson):
-      self.dbjson = dbjson
+     self.dbjson = dbjson
+     self.farm = self.dbjson['flickr']['farm']
+     self.server = self.dbjson['flickr']['server']
+     self.photo_id = self.dbjson['flickr']['id']
+     self.secret = self.dbjson['flickr']['secret']
+     self.user_id = self.dbjson['flickr']['owner']
    
    def flickr_locator_path(self):
-      return "%s/%s/%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
+     return "%s/%s/%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
    
    def flickr_locator_string(self):
-      return "%s_%s_%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
+     return "%s_%s_%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
+   
+   def flickr_medium_url(self):
+      return "http://farm%s.staticflickr.com/%s/%s_%s_m.jpg" % ( self.farm, self.server, self.photo_id, self.secret )
+   
+   def flickr_page_url(self):
+     photo_id = self.dbjson['flickr']['id']
+     return "http://www.flickr.com/photos/"+self.user_id+"/"+self.photo_id
 
+   def mirrored_big_url(self):
+     return 'static/flickr/' + self.flickr_locator_path() + '/b.jpg'
+   
    def jpg_path(self):
-    return 'data/flickr_mirror/' + self.flickr_locator_path() + '/b.jpg'
+     return 'data/flickr_mirror/' + self.flickr_locator_path() + '/b.jpg'
 
 #class MirrorImage:
 #

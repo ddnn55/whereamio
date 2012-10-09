@@ -102,9 +102,9 @@ function initialize() {
 
     var clusters = [];
 
-    function attachLink(circle, _id){
-       google.maps.event.addListener(circle, 'click', function (e) {
-	  window.open("/cluster/" + _id);
+    function attachLink(item, url){
+       google.maps.event.addListener(item, 'click', function (e) {
+	  window.open(url);
        });
     }
 
@@ -120,7 +120,7 @@ function initialize() {
     function handle_clusters(data) {
        clearClusters();
 
-       console.log(data.length + " clusters in window");
+       console.log('NV Clusters:', data);
         
 	NVMakeClusters(data);
         
@@ -149,7 +149,7 @@ function initialize() {
 		  strokeOpacity:0.0, // let THREE draw cool stuff, this poly just takes mouse events
 		  map: map
 	       });
-               attachLink(polygon, _id);
+               attachLink(polygon, cluster['flickr_page_url']);
 	       clusters.push(polygon);
 	    }
             
@@ -189,10 +189,10 @@ function initialize() {
         var bounds = map.getBounds();
         if (typeof bounds !== "undefined") {
             params = {
-                'left': map.getBounds().getSouthWest().lng(),
-                'bottom': map.getBounds().getSouthWest().lat(),
-                'right': map.getBounds().getNorthEast().lng(),
-                'top': map.getBounds().getNorthEast().lat(),
+                //'left': map.getBounds().getSouthWest().lng(),
+                //'bottom': map.getBounds().getSouthWest().lat(),
+                //'right': map.getBounds().getNorthEast().lng(),
+                //'top': map.getBounds().getNorthEast().lat(),
             };
         } else {
             params = {}
@@ -200,7 +200,7 @@ function initialize() {
         }
 
         console.log("about to do clusters request");
-        $.getJSON('/clusters', params, handle_clusters);
+        $.getJSON('clusters', params, handle_clusters);
     }
 
 
@@ -242,7 +242,11 @@ function initialize() {
     };
     annotationRect.setOptions(rectOptions);
 
-
+    //###################################
+    //       Console mode
+    //###################################
+    if(NV.mode == 'console')
+    {
     google.maps.event.addListener(map, 'rightclick', function (e) {
         console.log(e.latLng.toString());
         $.ajax({
@@ -308,19 +312,11 @@ function initialize() {
         }
     });
 
-    $('#refresh').click(function () {
-        requestClusters();
-    });
-
-    //update();
-
-
-    //setTimeout(requestMeanshifts, 2000);
+    }
 
     initNV();
     animateNV();
 
     setTimeout(requestClusters, 1000);
-    //requestClusters();
 };
 

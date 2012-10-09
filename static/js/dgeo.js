@@ -44,7 +44,7 @@ var dgeo = {
     var degreeAspect = degree_width / degree_height;
     var meterAspect = meter_width / meter_height;
 
-    console.log(degreeAspect, '-->', meterAspect);
+    //console.log(degreeAspect, '-->', meterAspect);
 
     return meterAspect;
   }

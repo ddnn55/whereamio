@@ -7,7 +7,7 @@ import calendar
 import json
 import random
 #import web
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, Response
 
 import redis
 import pymongo
@@ -25,6 +25,7 @@ r = redis.StrictRedis(host='localhost', port=6379, db=0)
 unfinished_mines_key = 'unfinished_mines'
 
 m = pymongo.Connection()
+ltte = m.ltte
 mean_shifts = m.ltte.mean_shifts
 clusters = m.ltte.clusters
 photos = m.ltte.photos
@@ -33,8 +34,11 @@ photos = m.ltte.photos
 app = Flask(__name__)
 
 @app.route('/')
+def neatview():
+    return file("static/index.html").read()
+
+@app.route('/console')
 def console():
-    print "this function------------------------------------"
     return file("static/Console.html").read()
 
 @app.route('/mean_shift')
@@ -56,18 +60,32 @@ def mean_shift():
     return "yo"
 
 @app.route('/clusters', methods=['GET'])
-def sklearn_mean_shifts_json():
-   left   = float(request.args['left'])
-   right  = float(request.args['right'])
-   top    = float(request.args['top'])
-   bottom = float(request.args['bottom'])
+def clusters():
+   #left   = float(request.args['left'])
+   #right  = float(request.args['right'])
+   #top    = float(request.args['top'])
+   #bottom = float(request.args['bottom'])
    _clusters = []
    #for cluster in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
-   for cluster in clusters.find():
-      cluster_JSON_able = cluster
-      cluster_JSON_able['_id'] = str(cluster['_id'])
-      _clusters.append(cluster_JSON_able)
-   return json.dumps(_clusters)
+   for cluster in ltte.clusters.find():
+     photo = photos.find_one({'cluster':cluster['_id']})
+     try:
+       mi = Flickr.MirroredPhoto(photo)
+
+       cluster_JSON_able = cluster
+       cluster_JSON_able['_id'] = str(cluster['_id'])
+       cluster_JSON_able['image_url'] = mi.mirrored_big_url()
+       cluster_JSON_able['flickr_page_url'] = mi.flickr_page_url()
+       
+       _clusters.append(cluster_JSON_able)
+     except:
+       pass
+   
+   return Response(
+     response = json.dumps(_clusters),
+     status = 200,
+     mimetype = "application/json"
+   )
 
 @app.route('/cluster/<cluster_id>')
 def cluster(cluster_id):

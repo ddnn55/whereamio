@@ -60,9 +60,6 @@ function NVMakeClusters(clusters)
   mapBounds.top    = map.getBounds().getNorthEast().lat();
 
   //var imageUrl = "/static/img/grid.png";
-  var imageUrl = "/random";
-  testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
-  $('#image_debug').html('<img width="100%" src="'+imageUrl+'" />');
 
   for(var c = 0; c < clusters.length; c++)
   {
@@ -82,10 +79,11 @@ function NVMakeCluster(cluster)
 {
   var convexHull = cluster['convex_hull'];
 
-  var imageUrl = "/cluster/" + cluster['_id'] + "/random_image";
-  console.log(imageUrl);
+  // can't put a flickr.com URL here unless they enable CORS :(
+  // http://enable-cors.org/
+  var imageUrl = cluster['image_url'];
+
   var clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
-  
 
   var geometry = new THREE.Geometry();
   geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
