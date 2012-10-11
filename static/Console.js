@@ -102,8 +102,10 @@ function initialize() {
 
     var clusters = [];
 
-    function attachLink(item, url){
-       google.maps.event.addListener(item, 'click', function (e) {
+    function attachLink(item, url, eventName){
+       if(eventName === undefined)
+         eventName = 'click';
+       google.maps.event.addListener(item, eventName, function (e) {
 	  window.open(url);
        });
     }
@@ -150,6 +152,7 @@ function initialize() {
 		  map: map
 	       });
                attachLink(polygon, cluster['flickr_page_url']);
+               attachLink(polygon, 'cluster/'+_id, 'rightclick');
 	       clusters.push(polygon);
 	    }
             
