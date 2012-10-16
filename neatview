@@ -196,6 +196,31 @@ def _sklearn_meanshift(args):
       i = i + 1
    #print "updated " + str(i) + " photo.cluster foreign keys"
 
+def _representative_images(args):
+   import numpy as np
+   from bson import objectid
+   
+   clusters = []
+
+   if args.cluster:
+     cluster_id = objectid.ObjectId(args.cluster)
+     clusters.append(ltte.clusters.find_one({'_id':cluster_id}))
+   else:
+     clusters_cursor = clusters_in_bbox(args.roi)
+     for cluster in clusters:
+       clusters.append(cluster)
+   
+   for cluster in clusters:
+     photos = ltte.photos.find({'cluster':cluster['_id']})
+     photo_count = 0
+     for photo in photos:
+       #print photo
+       photo_count += 1
+     print str(photo_count) + " photos in cluster " + str(cluster['_id'])
+     print "Finding representative image..."
+     
+
+
 def _random_photos(args):
   import shutil
   random_photos = []
@@ -270,6 +295,13 @@ sklearn_meanshift = subparsers.add_parser('sklearn_meanshift')
 sklearn_meanshift.add_argument('roi_path', type=str)
 sklearn_meanshift.set_defaults(func=_sklearn_meanshift)
 
+# compute representative images
+representative_images = subparsers.add_parser('representative_images')
+clusters_of_interest = representative_images.add_mutually_exclusive_group(required=True)
+clusters_of_interest.add_argument('-r', '--roi', type=str)
+clusters_of_interest.add_argument('-c', '--cluster', type=str)
+representative_images.set_defaults(func=_representative_images)
+
 # plot photos
 sklearn_meanshift = subparsers.add_parser('plot_photos')
 sklearn_meanshift.add_argument('roi_path', type=str)
@@ -283,7 +315,7 @@ random_photos.add_argument('N', type=int)
 random_photos.add_argument('destination_directory', type=str)
 random_photos.set_defaults(func=_random_photos)
 
-# list_meanshifts
+# build static-host-able map
 build_map = subparsers.add_parser('build_map')
 build_map.add_argument('output_path', type=str)
 build_map.set_defaults(func=_build_map)
