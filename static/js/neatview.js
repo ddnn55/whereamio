@@ -32,15 +32,12 @@ function initNV() {
   });
 
   google.maps.event.addListener(map, 'bounds_changed', function() {
-
     mapBounds = {};
     mapBounds.left   = map.getBounds().getSouthWest().lng();
     mapBounds.bottom = map.getBounds().getSouthWest().lat();
     mapBounds.right  = map.getBounds().getNorthEast().lng();
     mapBounds.top    = map.getBounds().getNorthEast().lat();
     
-    //canvas.width  = $('#map_canvas').width();
-    //canvas.height = $('#map_canvas').height();
     renderer.setSize($('#map_canvas').width(), $('#map_canvas').height());
     
     camera.left = mapBounds.left;
@@ -53,6 +50,52 @@ function initNV() {
     console.log("updated projection matrix");
   });
 
+  $.getJSON('debug/mesh', receiveDebug);
+
+}
+
+function receiveDebug(meshes)
+{
+  console.log("debug meshes ", meshes);
+
+  for(var m = 0; m < meshes.length; m++)
+  {
+    var mesh = meshes[m];
+    var vertices = mesh.vertices;
+    var faces = mesh.faces;
+    var geometry = new THREE.Geometry();
+    for(var v = 0; v < vertices.length; v++)
+    {
+      geometry.vertices.push( new THREE.Vector3( vertices[v][1], vertices[v][0], 0.0 ) );
+    }
+    for(var f = 0; f < faces.length; f++)
+    {
+      geometry.faces.push( new THREE.Face3( faces[f][0], faces[f][1], faces[f][2] ) );
+    }
+    
+    var material = new THREE.MeshBasicMaterial({
+      //map: testTexture,
+      //transparent: true,
+      //opacity: 0.9,
+      color: 0xFF0000,
+      wireframe: true,
+      //wireframeLinewidth: 2
+    });
+ 
+    geometry.computeBoundingSphere();
+    geometry.computeBoundingBox();
+
+    var mesh = new THREE.Mesh( geometry, material );
+    mesh.position.x = 0.0;
+    mesh.position.y = 0.0;
+    mesh.position.z = 0.1;
+
+    console.log('debug mesh', mesh);
+  
+    scene.add( mesh );
+
+  }
+
 }
 
 function NVMakeClusters(clusters)
@@ -63,7 +106,6 @@ function NVMakeClusters(clusters)
   mapBounds.top    = map.getBounds().getNorthEast().lat();
 
   var imageUrl = "static/img/grid.png";
-  //var imageUrl = "http://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=512x512&maptype=roadmap&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318&markers=color:red%7Ccolor:red%7Clabel:C%7C40.718217,-73.998284&sensor=false";
   testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
   for(var c = 0; c < clusters.length; c++)

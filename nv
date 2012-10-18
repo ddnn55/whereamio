@@ -8,6 +8,7 @@ import random
 
 import pymongo
 
+import neatview
 from neatview import Neatview
 import dgeo
 import dpy
@@ -17,6 +18,8 @@ import GeoMeanShift
 # deprecate
 m = pymongo.Connection()
 ltte = m.ltte
+
+nv = Neatview()
 
 def run_mean_shift(cell):
    initial_point = cell.center()
@@ -71,6 +74,10 @@ def _clear_meanshifts(args):
    bbox = load_roi(args.region_of_interest_metadata)
    print "clearing meanshifts in ROI " + args.region_of_interest_metadata
    count = ltte.clusters.remove({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
+
+def _debug_clear(args):
+  ltte.debug_mesh.remove()
+  print "debug cleared"
 
 def _plot_photos(args):
    #from PIL import Image, ImageDraw
@@ -284,14 +291,15 @@ def _representative_images(args):
      #print "sum: ", np.sum(average_histogram)
 
 def _voronoi(args):
+
   roi = load_roi(args.roi)
   print "Computing Voronoi layout for", args.roi
   
-  nv = Neatview()
   tile = nv.tile(roi)
-  clusters = list(tile.clusters())
-  
-  print len(clusters), "clusters in", args.roi
+  clusters = list(tile.clusters());
+
+  neatview.builder.layout(clusters)
+
 
 def _random_photos(args):
   import shutil
@@ -371,6 +379,10 @@ sklearn_meanshift.set_defaults(func=_sklearn_meanshift)
 voronoi = subparsers.add_parser('voronoi')
 voronoi.add_argument('roi', type=str)
 voronoi.set_defaults(func=_voronoi)
+
+# debug data
+debug_clear = subparsers.add_parser('debug_clear')
+debug_clear.set_defaults(func=_debug_clear)
 
 # compute representative images
 representative_images = subparsers.add_parser('representative_images')
