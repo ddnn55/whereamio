@@ -73,29 +73,26 @@ function receiveDebug(geometries)
 	break;
     }
   }
+  console.log('receiveDebug end');
 }
 
 function debugMeshCreate(mesh)
 {
   var vertices = mesh.vertices;
-  var faces = mesh.faces;
+  var triangles = mesh.triangles;
   var geometry = new THREE.Geometry();
   for(var v = 0; v < vertices.length; v++)
   {
     geometry.vertices.push( new THREE.Vector3( vertices[v][1], vertices[v][0], 0.0 ) );
   }
-  for(var f = 0; f < faces.length; f++)
+  for(var t = 0; t < triangles.length; t++)
   {
-    geometry.faces.push( new THREE.Face3( faces[f][0], faces[f][1], faces[f][2] ) );
+    geometry.faces.push( new THREE.Face3( triangles[t][0], triangles[t][1], triangles[t][2] ) );
   }
   
   var material = new THREE.MeshBasicMaterial({
-    //map: testTexture,
-    //transparent: true,
-    //opacity: 0.9,
     color: 0xFF0000,
     wireframe: true,
-    //wireframeLinewidth: 2
   });
 
   geometry.computeBoundingSphere();
@@ -106,9 +103,56 @@ function debugMeshCreate(mesh)
   mesh.position.y = 0.0;
   mesh.position.z = 0.1;
 
-  console.log('debug mesh', mesh);
-
   scene.add( mesh );
+}
+
+function debugVoronoiCreate(voronoi)
+{
+  console.log('debugVoronoiCreate start');
+  var vertices = voronoi.vertices;
+  var segments = voronoi.segments;
+
+  console.log('segments', segments);
+
+  var material = new THREE.MeshBasicMaterial({
+    color: 0x0000FF,
+    wireframe: true,
+    wireframeLinewidth: 0.5
+  });
+
+  //for(var v = 0; v < vertices.length; v++)
+  //{
+  //  geometry.vertices.push( new THREE.Vector3( vertices[v][1], vertices[v][0], 0.0 ) );
+  //}
+  for(var s = 0; s < segments.length; s++)
+  {
+    var segment = segments[s];
+
+    var v1 = segments[s][0];
+    var v2 = segments[s][1];
+
+    if(v1 < 0 || v2 < 0)
+      continue;
+
+    v1 = vertices[v1];
+    v2 = vertices[v2];
+
+    var geometry = new THREE.Geometry();
+    geometry.vertices.push( new THREE.Vector3( v1[1], v1[0], 0.0 ) );
+    geometry.vertices.push( new THREE.Vector3( v2[1], v2[0], 0.0 ) );
+    
+    geometry.computeBoundingSphere();
+    geometry.computeBoundingBox();
+
+    var polyline = new THREE.Line( geometry, material );
+    polyline.position.x = 0.0;
+    polyline.position.y = 0.0;
+    polyline.position.z = 0.1;
+
+    scene.add( polyline );
+  }
+  
+  console.log('debugVoronoiCreate end');
 }
 
 function NVMakeClusters(clusters)

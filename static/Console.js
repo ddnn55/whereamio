@@ -202,32 +202,12 @@ function initialize() {
             console.log("bounds undefined!!!!!");
         }
 
-        console.log("about to do clusters request");
         $.getJSON('clusters', params, handle_clusters);
     }
 
 
 
 
-
-    function requestMeanshifts() {
-        var params;
-        var bounds = map.getBounds();
-        if (typeof bounds !== "undefined") {
-            params = {
-                'left': map.getBounds().getSouthWest().lng(),
-                'bottom': map.getBounds().getSouthWest().lat(),
-                'right': map.getBounds().getNorthEast().lng(),
-                'top': map.getBounds().getNorthEast().lat(),
-            };
-        } else {
-            params = {}
-            console.log("bounds undefined!!!!!");
-        }
-
-        console.log("about to do meanshifts request");
-        $.getJSON('/mean_shifts.json', params, handle_meanshifts);
-    }
 
     var annotationSW = new google.maps.LatLng(0.0, 0.0);
     var annotationNE = new google.maps.LatLng(0.0, 0.0);
