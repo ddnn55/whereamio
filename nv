@@ -8,11 +8,13 @@ import random
 
 import pymongo
 
+from neatview import Neatview
 import dgeo
 import dpy
 import Flickr
 import GeoMeanShift
 
+# deprecate
 m = pymongo.Connection()
 ltte = m.ltte
 
@@ -41,6 +43,7 @@ def load_roi(roi_path):
    bbox = dgeo.LatLngBoundingBox(json.load(file(roi_path))['bbox'])
    return bbox
 
+# deprecate
 def photos_in_roi(roi_path):
    bbox = load_roi(roi_path)
    return ltte.photos.find({
@@ -54,6 +57,7 @@ def photos_in_roi(roi_path):
       }
    })
 
+# deprecate
 def clusters_in_bbox(roi_path):
    bbox = load_roi(roi_path)
    return ltte.clusters.find({'center': {'$within': {'$box': [[bbox.bottom, bbox.left], [bbox.top, bbox.right]]}}})
@@ -197,29 +201,97 @@ def _sklearn_meanshift(args):
    #print "updated " + str(i) + " photo.cluster foreign keys"
 
 def _representative_images(args):
+   #import cv2
    import numpy as np
+   from scipy.misc import fromimage
+   from skimage.io import imread
+   from skimage.exposure import histogram
+   import skimage
    from bson import objectid
+   from PIL import Image
+   from Flickr import MirroredPhoto
    
+
    clusters = []
 
    if args.cluster:
      cluster_id = objectid.ObjectId(args.cluster)
      clusters.append(ltte.clusters.find_one({'_id':cluster_id}))
    else:
+     print "ROI mode: ", args.roi
      clusters_cursor = clusters_in_bbox(args.roi)
-     for cluster in clusters:
+     for cluster in clusters_cursor:
        clusters.append(cluster)
-   
+
+   print ""
+   cluster_index = 0
    for cluster in clusters:
+     cluster_index += 1
+     cluster_id = cluster['_id']
      photos = ltte.photos.find({'cluster':cluster['_id']})
+     total_photos = photos.count()
      photo_count = 0
+     average_histogram = None
+     images = []
      for photo in photos:
+       mp = MirroredPhoto(photo)
+       
+       #PIL
+       image = Image.open(mp.jpg_path())
+       size = fromimage(image).size
+       histogram = image.histogram()
+       histogram = map(lambda value: float(value) / float(size), histogram)
+       histogram = np.array(histogram)
+       
+       images.append((histogram, mp))
+
+       if average_histogram == None:
+         average_histogram = histogram
+       else:
+         average_histogram = (photo_count * average_histogram + histogram) / float(photo_count + 1)
+
        #print photo
        photo_count += 1
+
+       print "\rcluster ", cluster_index, "of", len(clusters), ',', cluster['_id'], ':', photo_count, "of", total_photos, "histogrammed",
+
      print str(photo_count) + " photos in cluster " + str(cluster['_id'])
      print "Finding representative image..."
      
+     min_diff = None
+     min_image = None
+     for (histogram, mp) in images:
+       diff = np.sum(np.square(histogram - average_histogram))
+       if min_diff == None:
+         min_diff = diff
+	 min_image = mp
+       if diff < min_diff:
+         diff = min_diff
+	 min_image = mp
 
+     print "image closest to average histogram: ", min_image.jpg_path()
+     
+     ltte.clusters.update(
+       {'_id' : cluster_id},
+       {'$addToSet' :
+         {'representative_images' :
+	   {'histogram' : min_image.dbid}
+	 }
+       }
+     )
+
+     #print average_histogram
+     #print "sum: ", np.sum(average_histogram)
+
+def _voronoi(args):
+  roi = load_roi(args.roi)
+  print "Computing Voronoi layout for", args.roi
+  
+  nv = Neatview()
+  tile = nv.tile(roi)
+  clusters = list(tile.clusters())
+  
+  print len(clusters), "clusters in", args.roi
 
 def _random_photos(args):
   import shutil
@@ -294,6 +366,11 @@ list_meanshifts.set_defaults(func=_list_meanshifts)
 sklearn_meanshift = subparsers.add_parser('sklearn_meanshift')
 sklearn_meanshift.add_argument('roi_path', type=str)
 sklearn_meanshift.set_defaults(func=_sklearn_meanshift)
+
+# compute voronoi cluster layout
+voronoi = subparsers.add_parser('voronoi')
+voronoi.add_argument('roi', type=str)
+voronoi.set_defaults(func=_voronoi)
 
 # compute representative images
 representative_images = subparsers.add_parser('representative_images')

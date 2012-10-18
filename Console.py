@@ -68,18 +68,21 @@ def clusters():
    _clusters = []
    #for cluster in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
    for cluster in ltte.clusters.find():
-     photo = photos.find_one({'cluster':cluster['_id']})
-     try:
-       mi = Flickr.MirroredPhoto(photo)
-
-       cluster_JSON_able = cluster
-       cluster_JSON_able['_id'] = str(cluster['_id'])
-       cluster_JSON_able['image_url'] = mi.mirrored_big_url()
-       cluster_JSON_able['flickr_page_url'] = mi.flickr_page_url()
+     cluster_JSON_able = cluster
+     db_rep_images = []
+     if 'representative_images' in cluster:
+       db_rep_images = cluster['representative_images']
        
-       _clusters.append(cluster_JSON_able)
-     except:
-       pass
+     cluster['representative_images'] = {}
+     
+     for rep_image in db_rep_images:
+       (rep_image_type, image_id) = rep_image.items()[0]
+       photo = photos.find_one({'_id':image_id})
+       mi = Flickr.MirroredPhoto(photo)
+       cluster['representative_images'][rep_image_type] = mi.ui_metadata()
+      
+     cluster['_id'] = str(cluster['_id'])
+     _clusters.append(cluster)
    
    return Response(
      response = json.dumps(_clusters),
@@ -91,9 +94,9 @@ def clusters():
 def cluster(cluster_id):
    html = '<link type="text/css" href="/static/css/cluster.css" rel="stylesheet" />'
    count = 0
-   oid = objectid.ObjectId(cluster_id)
-   print oid
-   for photo in photos.find({'cluster':oid}):
+   cluster_id = objectid.ObjectId(cluster_id)
+   html += "<div>" + str(ltte.clusters.find_one({'_id':cluster_id})) + "</div>"
+   for photo in photos.find({'cluster':cluster_id}):
       mi = Flickr.MirroredPhoto(photo)
       html = html + '<div class="cell"><div style="background-image:url(/static/flickr/' + mi.flickr_locator_path() + '/b.jpg)" class="image"></div><br>'
       html = html + photo['flickr']['title'] + '<br>'

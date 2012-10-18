@@ -4,6 +4,7 @@ import sys
 import os
 import math
 import geopy
+import json
 
 def aspect_of_bbox(bbox):
    left   = bbox['left']
@@ -70,6 +71,10 @@ class LatLngBoundingBox:
       self.right = bbox_dict['right']
       self.top = bbox_dict['top']
       self.bottom = bbox_dict['bottom']
+      self.bbox_dict = bbox_dict
+
+   def __str__(self):
+      return json.dumps(self.bbox_dict)
 
    def aspect(self):
       middle_top    = geopy.point.Point(self.top, (self.left + self.right) / 2.0)

@@ -189,7 +189,15 @@ class MirroredPhoto:
      self.photo_id = self.dbjson['flickr']['id']
      self.secret = self.dbjson['flickr']['secret']
      self.user_id = self.dbjson['flickr']['owner']
-   
+     
+     self.dbid = self.dbjson['_id']
+  
+   def ui_metadata(self):
+     return {
+       'image_url' : self.mirrored_big_url(),
+       'flickr_page_url' : self.flickr_page_url()
+     }
+
    def flickr_locator_path(self):
      return "%s/%s/%s_%s" % (self.dbjson['flickr']['farm'], self.dbjson['flickr']['server'], self.dbjson['flickr']['id'], self.dbjson['flickr']['secret'] )
    

@@ -86,9 +86,16 @@ function NVMakeCluster(cluster)
 
   // can't put a flickr.com URL here unless they enable CORS :(
   // http://enable-cors.org/
-  var imageUrl = cluster['image_url'];
-  var clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
-  //var clusterTexture = testTexture;
+  var clusterTexture;
+  if(cluster['representative_images']['histogram'] !== undefined)
+  {
+    var imageUrl = cluster['representative_images']['histogram']['image_url'];
+    clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
+  }
+  else
+  {
+    clusterTexture = testTexture;
+  }
   //var imageAspect = clusterTexture.image.width / clusterTexture.image.height;
   //var imageAspect = 0.5 / 1.0;
 
