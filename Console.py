@@ -59,10 +59,10 @@ def mean_shift():
        i = i + 1
     return "yo"
 
-@app.route('/debug/mesh')
-def debug_mesh():
-  debug_meshes = list(ltte.debug_mesh.find({}, {'_id':0}))
-  return json.dumps(debug_meshes)
+@app.route('/debug')
+def debug_geometries():
+  debug_geometries = list(ltte.debug.find({}, {'_id':0}))
+  return json.dumps(debug_geometries)
 
 @app.route('/clusters', methods=['GET'])
 def clusters():

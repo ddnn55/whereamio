@@ -11,10 +11,11 @@ def layout(clusters):
   
   mesh = {
     'name'     : 'delaunay triangulation',
+    'type'     : 'mesh',
     'vertices' : triangulation.points.tolist(),
     'faces'    : triangulation.vertices.tolist()
   }
 
-  ltte.debug_mesh.update({'name':mesh['name']}, mesh, upsert=True)
+  ltte.debug.update({'name':mesh['name']}, mesh, upsert=True)
 
   print "Triangulated centers of", len(clusters), "clusters"

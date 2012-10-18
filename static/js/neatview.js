@@ -50,52 +50,65 @@ function initNV() {
     console.log("updated projection matrix");
   });
 
-  $.getJSON('debug/mesh', receiveDebug);
+  $.getJSON('debug', receiveDebug);
 
 }
 
-function receiveDebug(meshes)
+function receiveDebug(geometries)
 {
-  console.log("debug meshes ", meshes);
-
-  for(var m = 0; m < meshes.length; m++)
+  console.log("debug geometries ", geometries);
+  for(var g = 0; g < geometries.length; g++)
   {
-    var mesh = meshes[m];
-    var vertices = mesh.vertices;
-    var faces = mesh.faces;
-    var geometry = new THREE.Geometry();
-    for(var v = 0; v < vertices.length; v++)
+    var geometry = geometries[g];
+    switch(geometry.type)
     {
-      geometry.vertices.push( new THREE.Vector3( vertices[v][1], vertices[v][0], 0.0 ) );
+      case 'mesh':
+        debugMeshCreate(geometry);
+	break;
+      case 'voronoi':
+        debugVoronoiCreate(geometry);
+	break;
+      default:
+        console.log("Uknown geometry type in debug geometries:", geometry.type);
+	break;
     }
-    for(var f = 0; f < faces.length; f++)
-    {
-      geometry.faces.push( new THREE.Face3( faces[f][0], faces[f][1], faces[f][2] ) );
-    }
-    
-    var material = new THREE.MeshBasicMaterial({
-      //map: testTexture,
-      //transparent: true,
-      //opacity: 0.9,
-      color: 0xFF0000,
-      wireframe: true,
-      //wireframeLinewidth: 2
-    });
- 
-    geometry.computeBoundingSphere();
-    geometry.computeBoundingBox();
-
-    var mesh = new THREE.Mesh( geometry, material );
-    mesh.position.x = 0.0;
-    mesh.position.y = 0.0;
-    mesh.position.z = 0.1;
-
-    console.log('debug mesh', mesh);
-  
-    scene.add( mesh );
-
   }
+}
 
+function debugMeshCreate(mesh)
+{
+  var vertices = mesh.vertices;
+  var faces = mesh.faces;
+  var geometry = new THREE.Geometry();
+  for(var v = 0; v < vertices.length; v++)
+  {
+    geometry.vertices.push( new THREE.Vector3( vertices[v][1], vertices[v][0], 0.0 ) );
+  }
+  for(var f = 0; f < faces.length; f++)
+  {
+    geometry.faces.push( new THREE.Face3( faces[f][0], faces[f][1], faces[f][2] ) );
+  }
+  
+  var material = new THREE.MeshBasicMaterial({
+    //map: testTexture,
+    //transparent: true,
+    //opacity: 0.9,
+    color: 0xFF0000,
+    wireframe: true,
+    //wireframeLinewidth: 2
+  });
+
+  geometry.computeBoundingSphere();
+  geometry.computeBoundingBox();
+
+  var mesh = new THREE.Mesh( geometry, material );
+  mesh.position.x = 0.0;
+  mesh.position.y = 0.0;
+  mesh.position.z = 0.1;
+
+  console.log('debug mesh', mesh);
+
+  scene.add( mesh );
 }
 
 function NVMakeClusters(clusters)
