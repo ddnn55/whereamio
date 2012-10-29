@@ -66,12 +66,7 @@ def debug_geometries():
 
 @app.route('/clusters', methods=['GET'])
 def clusters():
-   #left   = float(request.args['left'])
-   #right  = float(request.args['right'])
-   #top    = float(request.args['top'])
-   #bottom = float(request.args['bottom'])
    _clusters = []
-   #for cluster in skmeanshifts.find({'location': {'$within': {'$box': [[bottom, left], [top, right]]}}}):
    for cluster in ltte.clusters.find():
      cluster_JSON_able = cluster
      db_rep_images = []
@@ -89,8 +84,14 @@ def clusters():
      cluster['_id'] = str(cluster['_id'])
      _clusters.append(cluster)
    
+   json_string = None
+   if app.debug:
+     json_string = json.dumps(_clusters, indent=4)
+   else:
+     json_string = json.dumps(_clusters)
+
    return Response(
-     response = json.dumps(_clusters),
+     response = json_string,
      status = 200,
      mimetype = "application/json"
    )

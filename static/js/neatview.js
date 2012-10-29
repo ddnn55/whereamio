@@ -1,3 +1,5 @@
+if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
 var map, mapBounds;
 var camera, scene, renderer, canvas;
 var geometry, material, mesh, testTexture;
