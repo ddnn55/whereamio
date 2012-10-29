@@ -3,6 +3,127 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 var map, mapBounds;
 var camera, scene, renderer, canvas;
 var geometry, material, mesh, testTexture;
+var voronoiVertices;
+var NVinitialized = false, NVClusters;
+
+/******* Class Cluster ***********/
+function Cluster(data){
+   this.data = data;
+
+   console.log('making a cluster');
+  
+   // can't put a flickr.com URL here unless they enable CORS :(
+   // http://enable-cors.org/
+   var clusterTexture;
+   if(data['image'] !== undefined)
+   {
+     var imageUrl = data['image']['image_url'];
+     clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null, function() { requestAnimationFrame(NVRender) } );
+   }
+   else
+   {
+     clusterTexture = testTexture;
+   }
+   //var imageAspect = clusterTexture.image.width / clusterTexture.image.height;
+   //var imageAspect = 0.5 / 1.0;
+  
+   var geometry = new THREE.Geometry();
+   geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
+   
+   var left, right, top, bottom;
+   left   = data.center[1];
+   right  = data.center[1];
+   top    = data.center[0];
+   bottom = data.center[0];
+  
+   // do mesh of image
+   var p, uv = [];
+   this.boundaryVertices = data['voronoi_vertices'];
+   boundaryPoints = data['voronoi_vertices'].map(function(vertexIndex) {
+     return voronoiVertices[vertexIndex];
+   });
+   for(p = 0; p < boundaryPoints.length; p++)
+   {
+     var point = boundaryPoints[p];
+     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+     left   = Math.min(left, point[1]);
+     right  = Math.max(right, point[1]);
+     top    = Math.max(top, point[0]);
+     bottom = Math.min(bottom, point[0]);
+   }
+   //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
+   var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
+   var pixelAspect = canvas.width / canvas.height;
+   var aspectCorrection = pixelAspect / latLngAspect;
+  
+   //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
+  
+   var aspect = (right - left) / (top - bottom);
+   aspect *= aspectCorrection /*/ imageAspect*/;
+   var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
+   if(aspect > 1.0)
+   {
+     var uvHeight = 1.0 / aspect;
+     uvBottom = (1.0 - uvHeight) / 2.0;
+     uvTop = 1.0 - uvBottom;
+   }
+   else
+   {
+     var uvWidth = aspect;
+     uvLeft = (1.0 - uvWidth) / 2.0;
+     uvRight = 1.0 - uvLeft;
+   }
+   for(var v = 0; v < geometry.vertices.length; v++)
+   {
+     var vertex = geometry.vertices[v];
+     if(aspect > 1.0)
+       uv.push(new THREE.UV(
+         (vertex.x - left) / (right - left),
+         uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
+       ));
+     else
+       uv.push(new THREE.UV(
+         uvLeft + aspect * (vertex.x - left) / (right - left),
+         (vertex.y - bottom) / (top - bottom)
+       ));
+   }
+   for(var f = 1; f <= boundaryPoints.length; f++)
+   {
+     var v1 = f;
+     var v2 = (f % boundaryPoints.length) + 1;
+  
+     geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
+     geometry.faceVertexUvs[ 0 ].push([
+       uv[0],
+       uv[v1],
+       uv[v2]
+     ]);
+   }
+  
+   var material = new THREE.MeshBasicMaterial({
+     //map: testTexture,
+     map: clusterTexture,
+     transparent: true,
+     opacity: 0.5,
+     //color: 0x991111
+   });
+   
+   geometry.computeBoundingSphere();
+   geometry.computeBoundingBox();
+  
+   this.mesh = new THREE.Mesh( geometry, material );
+   this.mesh.position.x = 0.0;
+   this.mesh.position.y = 0.0;
+   
+   scene.add( this.mesh );
+}
+
+Cluster.prototype.forceOnPoint = function(point){
+    console.log("forceOnPoint", point);
+    return [0.0, 0.0];
+}
+/******* End Cluster *******/
+
 
 function latLngToCanvasXY(latLng)
 {
@@ -50,7 +171,10 @@ function initNV() {
     camera.updateProjectionMatrix();
 
     console.log("updated projection matrix");
+    NVRender();
   });
+
+  NVClusters = [];
 
   //$.getJSON('debug', receiveDebug);
 
@@ -159,8 +283,6 @@ function debugVoronoiCreate(voronoi)
 
 function NVLoadTile(data)
 {
-  console.log('making LCUSTERSSS');
-
   mapBounds.left   = map.getBounds().getSouthWest().lng();
   mapBounds.bottom = map.getBounds().getSouthWest().lat();
   mapBounds.right  = map.getBounds().getNorthEast().lng();
@@ -169,133 +291,49 @@ function NVLoadTile(data)
   var imageUrl = "static/img/grid.png";
   testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
+  voronoiVertices = data['voronoi_vertices']
+
   for(var c = 0; c < data['clusters'].length; c++)
   {
-    var cluster = data['clusters'][c];
-    NVMakeCluster(cluster, data['voronoi_vertices']);
+    var cluster_data = data['clusters'][c];
+    var cluster = new Cluster(cluster_data);
+    console.log("new Cluster", cluster);
+    NVClusters.push(cluster);
   }
+
+  requestAnimationFrame(NVRender);
+  //NVinitialized = true;
 }
 
-function NVMakeCluster(cluster, allPoints)
+
+function stepWeightedVoronoi()
 {
-  console.log('making a cluster');
-
-  // can't put a flickr.com URL here unless they enable CORS :(
-  // http://enable-cors.org/
-  var clusterTexture;
-  if(cluster['image'] !== undefined)
+  var vertexForces = voronoiVertices.map(function(vertex) { return [0.0, 0.0]});
+  for(var c = 0; c < NVClusters.length; c++)
   {
-    var imageUrl = cluster['image']['image_url'];
-    clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
+    var cluster = NVClusters[c];
+    for(var v = 0; v < cluster.boundaryVertices.length; v++)
+    {
+      var vertexIndex = cluster.boundaryVertices[v];
+      var force = cluster.forceOnPoint(voronoiVertices[vertexIndex]);
+      vertexForces[vertexIndex][0] += force[0];
+      vertexForces[vertexIndex][1] += force[1];
+    }
   }
-  else
-  {
-    clusterTexture = testTexture;
-  }
-  //var imageAspect = clusterTexture.image.width / clusterTexture.image.height;
-  //var imageAspect = 0.5 / 1.0;
-
-  var geometry = new THREE.Geometry();
-  geometry.vertices.push( new THREE.Vector3( cluster.center[1], cluster.center[0], 0 ) );
- 
-  var left, right, top, bottom;
-  left   = cluster.center[1];
-  right  = cluster.center[1];
-  top    = cluster.center[0];
-  bottom = cluster.center[0];
-
-  // do mesh of image
-  var p, uv = [];
-  var boundary = cluster['voronoi_vertices'].map(function(vertexIndex) {
-    return allPoints[vertexIndex];
-  });
-  for(p = 0; p < boundary.length; p++)
-  {
-    var point = boundary[p];
-    geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
-    left   = Math.min(left, point[1]);
-    right  = Math.max(right, point[1]);
-    top    = Math.max(top, point[0]);
-    bottom = Math.min(bottom, point[0]);
-  }
-  //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
-  var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
-  var pixelAspect = canvas.width / canvas.height;
-  var aspectCorrection = pixelAspect / latLngAspect;
-
-  //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
-
-  var aspect = (right - left) / (top - bottom);
-  aspect *= aspectCorrection /*/ imageAspect*/;
-  var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
-  if(aspect > 1.0)
-  {
-    var uvHeight = 1.0 / aspect;
-    uvBottom = (1.0 - uvHeight) / 2.0;
-    uvTop = 1.0 - uvBottom;
-  }
-  else
-  {
-    var uvWidth = aspect;
-    uvLeft = (1.0 - uvWidth) / 2.0;
-    uvRight = 1.0 - uvLeft;
-  }
-  for(var v = 0; v < geometry.vertices.length; v++)
-  {
-    var vertex = geometry.vertices[v];
-    if(aspect > 1.0)
-      uv.push(new THREE.UV(
-        (vertex.x - left) / (right - left),
-        uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
-      ));
-    else
-      uv.push(new THREE.UV(
-        uvLeft + aspect * (vertex.x - left) / (right - left),
-        (vertex.y - bottom) / (top - bottom)
-      ));
-  }
-  for(var f = 1; f <= boundary.length; f++)
-  {
-    var v1 = f;
-    var v2 = (f % boundary.length) + 1;
-
-    geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
-    geometry.faceVertexUvs[ 0 ].push([
-      uv[0],
-      uv[v1],
-      uv[v2]
-    ]);
-  }
-
-
-  var material = new THREE.MeshBasicMaterial({
-    //map: testTexture,
-    map: clusterTexture,
-    transparent: true,
-    opacity: 0.9,
-    //color: 0x991111
-  });
- 
-  geometry.computeBoundingSphere();
-  geometry.computeBoundingBox();
-
-  mesh = new THREE.Mesh( geometry, material );
-  mesh.position.x = 0.0;
-  mesh.position.y = 0.0;
-  
-  scene.add( mesh );
-
 }
 
-function animateNV() {
+function NVRender() {
   var d = new Date();
   var time = d.getTime() / 1000.0;
 
   // note: three.js includes requestAnimationFrame shim
-  requestAnimationFrame( animateNV );
+  //requestAnimationFrame( animateNV );
 
   //mesh.rotation.z += 0.01;
   //mesh.position.y = canvas.height / 2.0 + 100 * Math.sin(time);
+
+  if(NVinitialized)
+    stepWeightedVoronoi();
 
   renderer.render( scene, camera );
 

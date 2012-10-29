@@ -298,7 +298,6 @@ function initialize() {
     }
 
     initNV();
-    animateNV();
 
     setTimeout(requestClusters, 1000);
 };
