@@ -40,75 +40,6 @@ function Cluster(data){
    var geometry = new THREE.Geometry();
    geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
    
-   var left, right, top, bottom;
-   left   = data.center[1];
-   right  = data.center[1];
-   top    = data.center[0];
-   bottom = data.center[0];
-  
-   // do mesh of image
-   var p, uv = [];
-   boundaryPoints = data['voronoi_vertices'].map(function(vertexIndex) {
-     return NVVoronoiVertices[vertexIndex];
-   });
-   for(p = 0; p < boundaryPoints.length; p++)
-   {
-     var point = boundaryPoints[p];
-     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
-     left   = Math.min(left, point[1]);
-     right  = Math.max(right, point[1]);
-     top    = Math.max(top, point[0]);
-     bottom = Math.min(bottom, point[0]);
-   }
-   //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
-   var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
-   var pixelAspect = canvas.width / canvas.height;
-   var aspectCorrection = pixelAspect / latLngAspect;
-  
-   //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
-  
-   var aspect = (right - left) / (top - bottom);
-   aspect *= aspectCorrection /*/ imageAspect*/;
-   var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
-   if(aspect > 1.0)
-   {
-     var uvHeight = 1.0 / aspect;
-     uvBottom = (1.0 - uvHeight) / 2.0;
-     uvTop = 1.0 - uvBottom;
-   }
-   else
-   {
-     var uvWidth = aspect;
-     uvLeft = (1.0 - uvWidth) / 2.0;
-     uvRight = 1.0 - uvLeft;
-   }
-   for(var v = 0; v < geometry.vertices.length; v++)
-   {
-     var vertex = geometry.vertices[v];
-     if(aspect > 1.0)
-       uv.push(new THREE.UV(
-         (vertex.x - left) / (right - left),
-         uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
-       ));
-     else
-       uv.push(new THREE.UV(
-         uvLeft + aspect * (vertex.x - left) / (right - left),
-         (vertex.y - bottom) / (top - bottom)
-       ));
-   }
-   for(var f = 1; f <= boundaryPoints.length; f++)
-   {
-     var v1 = f;
-     var v2 = (f % boundaryPoints.length) + 1;
-  
-     geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
-     geometry.faceVertexUvs[ 0 ].push([
-       uv[0],
-       uv[v1],
-       uv[v2]
-     ]);
-   }
-  
    var material = new THREE.MeshBasicMaterial({
      //map: testTexture,
      map: clusterTexture,
@@ -117,9 +48,6 @@ function Cluster(data){
      //color: 0x991111
    });
    
-   geometry.computeBoundingSphere();
-   geometry.computeBoundingBox();
-  
    this.mesh = new THREE.Mesh( geometry, material );
    this.mesh.position.x = 0.0;
    this.mesh.position.y = 0.0;
@@ -139,7 +67,79 @@ Cluster.prototype.forceOnPoint = function(point)
 
 Cluster.prototype.updateMesh = function()
 {
+  var left, right, top, bottom;
+  left   = this.center[1];
+  right  = this.center[1];
+  top    = this.center[0];
+  bottom = this.center[0];
+ 
+  // do mesh of image
+  var p, uv = [];
+  boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
+    return NVVoronoiVertices[vertexIndex];
+  });
+  for(p = 0; p < boundaryPoints.length; p++)
+  {
+    var point = boundaryPoints[p];
+    this.mesh.geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+    left   = Math.min(left, point[1]);
+    right  = Math.max(right, point[1]);
+    top    = Math.max(top, point[0]);
+    bottom = Math.min(bottom, point[0]);
+  }
+  //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
+  var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
+  var pixelAspect = canvas.width / canvas.height;
+  var aspectCorrection = pixelAspect / latLngAspect;
   
+  //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
+  
+  var aspect = (right - left) / (top - bottom);
+  aspect *= aspectCorrection /*/ imageAspect*/;
+  var uvLeft = 0.0, uvRight = 1.0, uvTop = 1.0, uvBottom = 0.0;
+  if(aspect > 1.0)
+  {
+    var uvHeight = 1.0 / aspect;
+    uvBottom = (1.0 - uvHeight) / 2.0;
+    uvTop = 1.0 - uvBottom;
+  }
+  else
+  {
+    var uvWidth = aspect;
+    uvLeft = (1.0 - uvWidth) / 2.0;
+    uvRight = 1.0 - uvLeft;
+  }
+  for(var v = 0; v < this.mesh.geometry.vertices.length; v++)
+  {
+    var vertex = this.mesh.geometry.vertices[v];
+    if(aspect > 1.0)
+      uv.push(new THREE.UV(
+        (vertex.x - left) / (right - left),
+        uvBottom + ((vertex.y - bottom) / (top - bottom)) / aspect
+      ));
+    else
+      uv.push(new THREE.UV(
+        uvLeft + aspect * (vertex.x - left) / (right - left),
+        (vertex.y - bottom) / (top - bottom)
+      ));
+  }
+  for(var f = 1; f <= boundaryPoints.length; f++)
+  {
+    var v1 = f;
+    var v2 = (f % boundaryPoints.length) + 1;
+  
+    this.mesh.geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
+    this.mesh.geometry.faceVertexUvs[ 0 ].push([
+      uv[0],
+      uv[v1],
+      uv[v2]
+    ]);
+  }
+  
+
+  
+  this.mesh.geometry.computeBoundingSphere();
+  this.mesh.geometry.computeBoundingBox();
 }
 /******* End Cluster *******/
 
