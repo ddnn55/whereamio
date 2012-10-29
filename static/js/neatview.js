@@ -3,29 +3,39 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 var map, mapBounds;
 var camera, scene, renderer, canvas;
 var geometry, material, mesh, testTexture;
-var voronoiVertices;
-var NVinitialized = false, NVClusters;
+var NVVoronoiVertices;
+var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusters;
+var NVVoronoiRelaxationDamping = 1;
 
 /******* Class Cluster ***********/
 function Cluster(data){
    this.data = data;
+   this.center = data.center;
+   this.boundaryVertices = data['voronoi_vertices'];
 
-   console.log('making a cluster');
-  
    // can't put a flickr.com URL here unless they enable CORS :(
    // http://enable-cors.org/
    var clusterTexture;
    if(data['image'] !== undefined)
    {
      var imageUrl = data['image']['image_url'];
-     clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null, function() { requestAnimationFrame(NVRender) } );
+     clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null,
+       function() { // onLoad
+         NVLoadedOrFailedClusterCount++;
+         if(NVLoadedOrFailedClusterCount == NVClusterCount)
+           NVAllClustersLoaded();
+       },
+       function() { // onFail
+         console.warn("NV: A texture failed to load");
+	 NVLoadedOrFailedClusterCount++;
+       }
+     );
    }
    else
    {
      clusterTexture = testTexture;
+     NVLoadedOrFailedClusterCount++;
    }
-   //var imageAspect = clusterTexture.image.width / clusterTexture.image.height;
-   //var imageAspect = 0.5 / 1.0;
   
    var geometry = new THREE.Geometry();
    geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
@@ -38,9 +48,8 @@ function Cluster(data){
   
    // do mesh of image
    var p, uv = [];
-   this.boundaryVertices = data['voronoi_vertices'];
    boundaryPoints = data['voronoi_vertices'].map(function(vertexIndex) {
-     return voronoiVertices[vertexIndex];
+     return NVVoronoiVertices[vertexIndex];
    });
    for(p = 0; p < boundaryPoints.length; p++)
    {
@@ -116,11 +125,21 @@ function Cluster(data){
    this.mesh.position.y = 0.0;
    
    scene.add( this.mesh );
+
+   this.updateMesh();
 }
 
-Cluster.prototype.forceOnPoint = function(point){
-    console.log("forceOnPoint", point);
-    return [0.0, 0.0];
+Cluster.prototype.forceOnPoint = function(point)
+{
+  return [
+    Math.pow(this.center[0] - point[0], 2),
+    Math.pow(this.center[1] - point[1], 2)
+  ];
+}
+
+Cluster.prototype.updateMesh = function()
+{
+  
 }
 /******* End Cluster *******/
 
@@ -178,6 +197,13 @@ function initNV() {
 
   //$.getJSON('debug', receiveDebug);
 
+}
+
+function NVAllClustersLoaded()
+{
+  NVRender();
+  console.log("NV Loaded");
+  stepWeightedVoronoi();
 }
 
 function receiveDebug(geometries)
@@ -291,50 +317,64 @@ function NVLoadTile(data)
   var imageUrl = "static/img/grid.png";
   testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
-  voronoiVertices = data['voronoi_vertices']
+  NVVoronoiVertices = data['voronoi_vertices']
+  NVClusterCount = data['clusters'].length;
 
   for(var c = 0; c < data['clusters'].length; c++)
   {
     var cluster_data = data['clusters'][c];
     var cluster = new Cluster(cluster_data);
-    console.log("new Cluster", cluster);
     NVClusters.push(cluster);
   }
 
   requestAnimationFrame(NVRender);
-  //NVinitialized = true;
 }
 
 
 function stepWeightedVoronoi()
 {
-  var vertexForces = voronoiVertices.map(function(vertex) { return [0.0, 0.0]});
+  // calculate forces
+  var vertexForces = NVVoronoiVertices.map(function(vertex) { return [0.0, 0.0]});
+  var numberOfInfluencers = NVVoronoiVertices.map(function(vertex) { return 0});
   for(var c = 0; c < NVClusters.length; c++)
   {
     var cluster = NVClusters[c];
     for(var v = 0; v < cluster.boundaryVertices.length; v++)
     {
       var vertexIndex = cluster.boundaryVertices[v];
-      var force = cluster.forceOnPoint(voronoiVertices[vertexIndex]);
+      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]);
       vertexForces[vertexIndex][0] += force[0];
       vertexForces[vertexIndex][1] += force[1];
+      numberOfInfluencers[vertexIndex]++;
     }
   }
+  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  {
+    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] + NVVoronoiRelaxationDamping);
+    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] + NVVoronoiRelaxationDamping);
+  }
+  console.log("vertexForces", vertexForces);
+
+  // update NVVoronoiVertices
+  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  {
+    NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
+    NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
+  }
+
+  // update meshes
+  for(var c = 0; c < NVClusters.length; c++)
+  {
+    var cluster = NVClusters[c];
+    cluster.updateMesh();
+  }
+
+  //window.setTimeout(stepWeightedVoronoi, 100);
 }
 
 function NVRender() {
   var d = new Date();
   var time = d.getTime() / 1000.0;
 
-  // note: three.js includes requestAnimationFrame shim
-  //requestAnimationFrame( animateNV );
-
-  //mesh.rotation.z += 0.01;
-  //mesh.position.y = canvas.height / 2.0 + 100 * Math.sin(time);
-
-  if(NVinitialized)
-    stepWeightedVoronoi();
-
   renderer.render( scene, camera );
-
 }
