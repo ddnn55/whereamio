@@ -52,7 +52,7 @@ function initNV() {
     console.log("updated projection matrix");
   });
 
-  $.getJSON('debug', receiveDebug);
+  //$.getJSON('debug', receiveDebug);
 
 }
 
@@ -157,8 +157,10 @@ function debugVoronoiCreate(voronoi)
   console.log('debugVoronoiCreate end');
 }
 
-function NVMakeClusters(clusters)
+function NVLoadTile(data)
 {
+  console.log('making LCUSTERSSS');
+
   mapBounds.left   = map.getBounds().getSouthWest().lng();
   mapBounds.bottom = map.getBounds().getSouthWest().lat();
   mapBounds.right  = map.getBounds().getNorthEast().lng();
@@ -167,30 +169,23 @@ function NVMakeClusters(clusters)
   var imageUrl = "static/img/grid.png";
   testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
-  for(var c = 0; c < clusters.length; c++)
+  for(var c = 0; c < data['clusters'].length; c++)
   {
-    var cluster = clusters[c];
-    if('convex_hull' in cluster)
-    {
-      var convexHull = cluster['convex_hull'];
-      if(cluster['convex_hull'].length >= 3)
-      {
-        NVMakeCluster(cluster);
-      }
-    }
+    var cluster = data['clusters'][c];
+    NVMakeCluster(cluster, data['voronoi_vertices']);
   }
 }
 
-function NVMakeCluster(cluster)
+function NVMakeCluster(cluster, allPoints)
 {
-  var convexHull = cluster['convex_hull'];
+  console.log('making a cluster');
 
   // can't put a flickr.com URL here unless they enable CORS :(
   // http://enable-cors.org/
   var clusterTexture;
-  if(cluster['representative_images']['histogram'] !== undefined)
+  if(cluster['image'] !== undefined)
   {
-    var imageUrl = cluster['representative_images']['histogram']['image_url'];
+    var imageUrl = cluster['image']['image_url'];
     clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl );
   }
   else
@@ -209,11 +204,14 @@ function NVMakeCluster(cluster)
   top    = cluster.center[0];
   bottom = cluster.center[0];
 
-  // do mesh of convex hull
+  // do mesh of image
   var p, uv = [];
-  for(p = 0; p < convexHull.length; p++)
+  var boundary = cluster['voronoi_vertices'].map(function(vertexIndex) {
+    return allPoints[vertexIndex];
+  });
+  for(p = 0; p < boundary.length; p++)
   {
-    var point = convexHull[p];
+    var point = boundary[p];
     geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
     left   = Math.min(left, point[1]);
     right  = Math.max(right, point[1]);
@@ -256,10 +254,10 @@ function NVMakeCluster(cluster)
         (vertex.y - bottom) / (top - bottom)
       ));
   }
-  for(var f = 1; f <= convexHull.length; f++)
+  for(var f = 1; f <= boundary.length; f++)
   {
     var v1 = f;
-    var v2 = (f % convexHull.length) + 1;
+    var v2 = (f % boundary.length) + 1;
 
     geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
     geometry.faceVertexUvs[ 0 ].push([

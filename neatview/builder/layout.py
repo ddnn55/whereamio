@@ -1,13 +1,17 @@
+from math import atan2
+import json
+
 import numpy as np
 from scipy.spatial import Delaunay
 
 from ..db import ltte
 
-def layout(clusters):
+def layout(tile):
+  clusters = list(tile.clusters())
   cluster_centers = map(lambda cluster: cluster.center(), clusters)
-  cluster_centers = np.array(cluster_centers)
+  cluster_centers_np = np.array(cluster_centers)
 
-  triangulation = Delaunay(cluster_centers)
+  triangulation = Delaunay(cluster_centers_np)
   delaunay_vertices = triangulation.points.tolist()
   delaunay_triangles = triangulation.vertices.tolist()
 
@@ -19,6 +23,21 @@ def layout(clusters):
   }
 
   voronoi_vertices = map(lambda triangle: circumcenter(triangle, delaunay_vertices), delaunay_triangles)
+  layout_data = {}
+  layout_data['voronoi_vertices'] = voronoi_vertices
+  layout_data['clusters'] = map(lambda cluster: cluster.display_data(), clusters)
+  for cluster in layout_data['clusters']:
+    cluster['voronoi_vertices'] = []
+  for voronoi_vertex_index in range(0, len(voronoi_vertices)):
+    delaunay_triangle = triangulation.vertices[voronoi_vertex_index]
+    for cluster_index in delaunay_triangle:
+      layout_data['clusters'][cluster_index]['voronoi_vertices'].append(voronoi_vertex_index)
+  for cluster in layout_data['clusters']:
+    cluster['voronoi_vertices'] = sorted(
+      cluster['voronoi_vertices'],
+      key = lambda voronoi_vertex_index: angle(cluster['center'], voronoi_vertices[voronoi_vertex_index])
+    )
+
   voronoi_segments = []
   frontier = [ triangulation.vertex_to_simplex[0] ]
   visited = set()
@@ -38,15 +57,18 @@ def layout(clusters):
     'segments' : voronoi_segments
   }
 
-  print "\n\n", delaunay_triangulation
-  print "\n\n", voronoi_tesselation, "\n\n"
-
   ltte.debug.update({'name':delaunay_triangulation['name']}, delaunay_triangulation, upsert=True)
   ltte.debug.update({'name':voronoi_tesselation['name']},    voronoi_tesselation,    upsert=True)
-  
 
   print "Triangulated centers of", len(clusters), "clusters"
 
+  tile_filename = 'static/tile/all'
+  tile_file = file(tile_filename, 'w')
+  json.dump(layout_data, tile_file)
+  print "Saved layout to " + tile_filename
+
+def angle(lat_lng_a, lat_lng_b):
+  return atan2(lat_lng_a[0] - lat_lng_b[0], lat_lng_a[1] - lat_lng_b[1])
 
 def circumcenter(vertex_indices, vertices):
   (A, B, C) = map(lambda index: vertices[index], vertex_indices)

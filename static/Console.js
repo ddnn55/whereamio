@@ -124,7 +124,7 @@ function initialize() {
 
        console.log('NV Clusters:', data);
         
-	NVMakeClusters(data);
+	NVLoadTile(data);
         
 	for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
 	    // parse cluster
@@ -192,7 +192,7 @@ function initialize() {
         var bounds = map.getBounds();
         if (typeof bounds !== "undefined") {
             params = {
-                //'left': map.getBounds().getSouthWest().lng(),
+                'left': map.getBounds().getSouthWest().lng(),
                 //'bottom': map.getBounds().getSouthWest().lat(),
                 //'right': map.getBounds().getNorthEast().lng(),
                 //'top': map.getBounds().getNorthEast().lat(),
@@ -202,7 +202,7 @@ function initialize() {
             console.log("bounds undefined!!!!!");
         }
 
-        $.getJSON('clusters', params, handle_clusters);
+        $.getJSON('static/tile/all', params, handle_clusters);
     }
 
 

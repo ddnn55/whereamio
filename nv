@@ -296,9 +296,8 @@ def _voronoi(args):
   print "Computing Voronoi layout for", args.roi
   
   tile = nv.tile(roi)
-  clusters = list(tile.clusters());
 
-  neatview.builder.layout(clusters)
+  neatview.builder.layout(tile)
 
 
 def _random_photos(args):

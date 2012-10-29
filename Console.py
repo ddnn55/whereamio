@@ -62,11 +62,11 @@ def mean_shift():
 @app.route('/debug')
 def debug_geometries():
   debug_geometries = list(ltte.debug.find({}, {'_id':0}))
-  return json.dumps(debug_geometries)
+  return Response(json.dumps(debug_geometries, indent=4), status = 200, mimetype = "application/json")
 
-@app.route('/clusters', methods=['GET'])
-def clusters():
-   _clusters = []
+@app.route('/tile', methods=['GET'])
+def tile():
+   data = []
    for cluster in ltte.clusters.find():
      cluster_JSON_able = cluster
      db_rep_images = []
@@ -82,13 +82,13 @@ def clusters():
        cluster['representative_images'][rep_image_type] = mi.ui_metadata()
       
      cluster['_id'] = str(cluster['_id'])
-     _clusters.append(cluster)
+     data.append(cluster)
    
    json_string = None
    if app.debug:
-     json_string = json.dumps(_clusters, indent=4)
+     json_string = json.dumps(data, indent=4)
    else:
-     json_string = json.dumps(_clusters)
+     json_string = json.dumps(data)
 
    return Response(
      response = json_string,
