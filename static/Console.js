@@ -124,7 +124,7 @@ function initialize() {
 
        console.log('NV Clusters:', data);
         
-	NVLoadTile(data);
+	NV.loadTile(data);
         
 	for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
 	    // parse cluster

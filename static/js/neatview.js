@@ -3,11 +3,11 @@ var TESSELATION_CANALS_WIDTH = 4;
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var map, mapBounds;
-var camera, scene, renderer, canvas;
+var camera, scene, canvas;
 var geometry, material, mesh, testTexture;
 var NV;
 var NVVoronoiVertices;
-var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusterDensityMedian, NVClusters;
+var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusterDensityMedian;
 var NVVoronoiRelaxationDamping = 1;
 
 
@@ -32,23 +32,6 @@ function median(list)
   return list[Math.floor(list.length/2)];
 }
 
-function NVComputeTotalDensity()
-{
-  var densities = [];
-  for(var c = 0; c < NVClusters.length; c++)
-  {
-    var cluster = NVClusters[c];
-    densities.push(cluster.computeDensity());
-  }
-  NVClusterDensityMedian = median(densities);
-  var totalCount = NVClusters.map(function(c) { return c.count }).reduce(function(a, b) { return a+b });
-  var totalArea = NVClusters.map(function(c) { return c.area() }).reduce(function(a, b) { return a+b });
-  var totalDensity = totalCount / totalArea;
-  console.log('totalDensity', totalDensity);
-  return totalDensity;
-  //console.log('NVTotalDensity', NVTotalDensity);
-}
-
 /*function latLngTranslatedByPointsTowardPoint(latLngFrom, screenDistance, latLngTarget)
 {
   var latLngDirection = [ latLngTarget[0] - latLngFrom[0], latLngTarget[1] - latLngFrom[1] ];
@@ -58,8 +41,12 @@ function NVComputeTotalDensity()
 }*/
 
 /******* Class Neatview **********/
+var DELAY = 1000.0 / 60;
 function Neatview()
 {
+  this.clusters = [];
+  this.lastTime = null;
+
   var _this = this;
 
   this.datGui = new dat.GUI();
@@ -68,15 +55,162 @@ function Neatview()
   this.datGui.add(this, 'opacity', 0.0, 1.0).onChange(function(opacity) {
     _this.setOpacity(opacity);
   });
+
+  this.threeCanvas = document.getElementById('three_canvas');
+  this.threeCanvas.width  = $('#map_canvas').width();
+  this.threeCanvas.height = $('#map_canvas').height();
+
+  this.camera = new THREE.OrthographicCamera( 0, this.threeCanvas.width, this.threeCanvas.height, 0, -1, 1 );
+  this.scene = new THREE.Scene();
+  this.threeRenderer = new THREE.WebGLRenderer({
+    canvas: _this.threeCanvas,
+    antialias: true
+  });
+
+  google.maps.event.addListener(map, 'bounds_changed', function() {
+    mapBounds = {};
+    mapBounds.left   = map.getBounds().getSouthWest().lng();
+    mapBounds.bottom = map.getBounds().getSouthWest().lat();
+    mapBounds.right  = map.getBounds().getNorthEast().lng();
+    mapBounds.top    = map.getBounds().getNorthEast().lat();
+    
+    _this.threeRenderer.setSize($('#map_canvas').width(), $('#map_canvas').height());
+    
+    _this.camera.left = mapBounds.left;
+    _this.camera.right = mapBounds.right;
+    _this.camera.top = mapBounds.top;
+    _this.camera.bottom = mapBounds.bottom;
+
+    _this.camera.updateProjectionMatrix();
+
+    _this.render();
+  });
+}
+
+Neatview.prototype.render = function()
+{
+  this.threeRenderer.render( this.scene, this.camera );
 }
 
 Neatview.prototype.setOpacity = function(opacity)
 {
-  for(var c = 0; c < NVClusters.length; c++)
+  for(var c = 0; c < this.clusters.length; c++)
   {
-    var cluster = NVClusters[c];
+    var cluster = this.clusters[c];
     cluster.mesh.material.opacity = opacity;
   }
+}
+
+Neatview.prototype.loadTile = function(data)
+{
+  
+  mapBounds.left   = map.getBounds().getSouthWest().lng();
+  mapBounds.bottom = map.getBounds().getSouthWest().lat();
+  mapBounds.right  = map.getBounds().getNorthEast().lng();
+  mapBounds.top    = map.getBounds().getNorthEast().lat();
+
+  var imageUrl = "static/img/grid.png";
+  testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
+
+  NVVoronoiVertices = data['voronoi_vertices']
+  NVClusterCount = data['clusters'].length;
+
+  // DEBUG DELETEME FIXME just first few
+  NVClusterCount = 100;
+
+  for(var c = 0; c < NVClusterCount; c++) 
+  {
+    var cluster_data = data['clusters'][c];
+    var cluster = new Cluster(cluster_data);
+    this.clusters.push(cluster);
+  }
+
+  this.totalDensity = this.computeTotalDensity();
+
+  this.render();
+}
+
+Neatview.prototype.computeTotalDensity = function()
+{
+  var densities = [];
+  for(var c = 0; c < this.clusters.length; c++)
+  {
+    var cluster = this.clusters[c];
+    densities.push(cluster.computeDensity());
+  }
+  NVClusterDensityMedian = median(densities);
+  var totalCount = this.clusters.map(function(c) { return c.count }).reduce(function(a, b) { return a+b });
+  var totalArea = this.clusters.map(function(c) { return c.area() }).reduce(function(a, b) { return a+b });
+  var totalDensity = totalCount / totalArea;
+  console.log('totalDensity', totalDensity);
+  return totalDensity;
+  //console.log('NVTotalDensity', NVTotalDensity);
+}
+
+Neatview.prototype.stepWeightedVoronoi = function()
+{
+  var _this = this;
+
+  var time = (new Date()).getTime() / 1000.0;
+  if(this.lastTime == null)
+    this.lastTime = time;
+  var timeStep = time - _this.lastTime;
+
+
+  // calculate forces
+  var vertexForces = NVVoronoiVertices.map(function(vertex) { return [0.0, 0.0]});
+  var numberOfInfluencers = NVVoronoiVertices.map(function(vertex) { return 0});
+  for(var c = 0; c < this.clusters.length; c++)
+  {
+    var cluster = this.clusters[c];
+    cluster.updateDensity();
+
+    // this cluster too big or too small?
+    //console.log('my density', cluster.density, 'total', NVTotalDensity);
+    //console.log('my power', power);
+    //console.log('-----');
+
+    // append cluster's pushPower to cluster's voronoi vertices
+    for(var v = 0; v < cluster.boundaryVertices.length; v++)
+    {
+      var vertexIndex = cluster.boundaryVertices[v];
+      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]).map(function(v) { return timeStep * v });
+      vertexForces[vertexIndex][0] += force[0];
+      vertexForces[vertexIndex][1] += force[1];
+      numberOfInfluencers[vertexIndex]++;
+    }
+  }
+  var maxForce = 0.0;
+  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  {
+    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
+    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
+    var mag = Math.sqrt(
+      Math.pow(vertexForces[vertexIndex][0], 2) + Math.pow(vertexForces[vertexIndex][1], 2) 
+    );
+    if(mag > maxForce)
+      maxForce = mag;
+  }
+
+  // update NVVoronoiVertices
+  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  {
+    NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
+    NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
+  }
+
+  // update meshes
+  for(var c = 0; c < this.clusters.length; c++)
+  {
+    this.clusters[c].updateMesh();
+  }
+
+  // render
+  requestAnimationFrame(function() { _this.render() });
+
+  this.lastTime = time;
+
+  window.setTimeout(function() { _this.stepWeightedVoronoi() }, DELAY);
 }
 
 /******* Class Cluster ***********/
@@ -153,14 +287,14 @@ function Cluster(data){
   this.mesh.position.x = 0.0;
   this.mesh.position.y = 0.0;
   
-  scene.add( this.mesh );
+  NV.scene.add( this.mesh );
 
   this.updateMesh();
 }
 
 Cluster.prototype.forceOnPoint = function(point)
 {
-  var pushPower = (this.density - NVTotalDensity) / NVTotalDensity;
+  var pushPower = (this.density - NV.totalDensity) / NV.totalDensity;
   
   /*var absDistance = [
     Math.abs(this.center[0] - point[0]),
@@ -228,7 +362,7 @@ Cluster.prototype.updateMesh = function()
   }
   //var latLngAspect = dgeo.okProjectionAspect(left, right, top, top - (right-left));
   var latLngAspect = (mapBounds.right - mapBounds.left) / (mapBounds.top - mapBounds.bottom);
-  var pixelAspect = canvas.width / canvas.height;
+  var pixelAspect = NV.threeCanvas.width / NV.threeCanvas.height;
   var aspectCorrection = pixelAspect / latLngAspect;
   
   //console.log('imageAspect:', imageAspect, 'latLngAspect:', latLngAspect, 'pixelAspect:', pixelAspect, 'aspectCorrection:', aspectCorrection);
@@ -297,41 +431,10 @@ function latLngToCanvasXY(latLng)
 
 function initNV() {
 
-  canvas = document.getElementById('three_canvas');
-  canvas.width  = $('#map_canvas').width();
-  canvas.height = $('#map_canvas').height();
-  console.log($('#map_canvas').width());
-
-  camera = new THREE.OrthographicCamera( 0, canvas.width, canvas.height, 0, -1, 1 );
-  scene = new THREE.Scene();
-  renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    antialias: true
-  });
-
-  google.maps.event.addListener(map, 'bounds_changed', function() {
-    mapBounds = {};
-    mapBounds.left   = map.getBounds().getSouthWest().lng();
-    mapBounds.bottom = map.getBounds().getSouthWest().lat();
-    mapBounds.right  = map.getBounds().getNorthEast().lng();
-    mapBounds.top    = map.getBounds().getNorthEast().lat();
-    
-    renderer.setSize($('#map_canvas').width(), $('#map_canvas').height());
-    
-    camera.left = mapBounds.left;
-    camera.right = mapBounds.right;
-    camera.top = mapBounds.top;
-    camera.bottom = mapBounds.bottom;
-
-    camera.updateProjectionMatrix();
-
-    console.log("updated projection matrix");
-    NVRender();
-  });
-
-  NVClusters = [];
-
   NV = new Neatview();
+  
+
+
   
   //$.getJSON('debug', receiveDebug);
 
@@ -339,9 +442,9 @@ function initNV() {
 
 function NVAllClustersLoaded()
 {
-  NVRender();
+  NV.render();
   console.log("NV Loaded");
-  stepWeightedVoronoi();
+  NV.stepWeightedVoronoi();
 }
 
 function receiveDebug(geometries)
@@ -445,106 +548,8 @@ function debugVoronoiCreate(voronoi)
   console.log('debugVoronoiCreate end');
 }
 
-function NVLoadTile(data)
-{
-  
-  mapBounds.left   = map.getBounds().getSouthWest().lng();
-  mapBounds.bottom = map.getBounds().getSouthWest().lat();
-  mapBounds.right  = map.getBounds().getNorthEast().lng();
-  mapBounds.top    = map.getBounds().getNorthEast().lat();
-
-  var imageUrl = "static/img/grid.png";
-  testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
-
-  NVVoronoiVertices = data['voronoi_vertices']
-  NVClusterCount = data['clusters'].length;
-
-  // DEBUG DELETEME FIXME just first few
-  NVClusterCount = 100;
-
-  for(var c = 0; c < NVClusterCount; c++) 
-  {
-    var cluster_data = data['clusters'][c];
-    var cluster = new Cluster(cluster_data);
-    NVClusters.push(cluster);
-  }
-
-  NVTotalDensity = NVComputeTotalDensity();
 
 
 
 
-  NVRender();
-}
 
-var lastTime = null;
-var DELAY = 1000.0 / 60;
-function stepWeightedVoronoi()
-{
-
-  var time = (new Date()).getTime() / 1000.0;
-  if(lastTime == null)
-    lastTime = time;
-  var timeStep = time - lastTime;
-
-
-  // calculate forces
-  var vertexForces = NVVoronoiVertices.map(function(vertex) { return [0.0, 0.0]});
-  var numberOfInfluencers = NVVoronoiVertices.map(function(vertex) { return 0});
-  for(var c = 0; c < NVClusters.length; c++)
-  {
-    var cluster = NVClusters[c];
-    cluster.updateDensity();
-
-    // this cluster too big or too small?
-    //console.log('my density', cluster.density, 'total', NVTotalDensity);
-    //console.log('my power', power);
-    //console.log('-----');
-
-    // append cluster's pushPower to cluster's voronoi vertices
-    for(var v = 0; v < cluster.boundaryVertices.length; v++)
-    {
-      var vertexIndex = cluster.boundaryVertices[v];
-      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]).map(function(v) { return timeStep * v });
-      vertexForces[vertexIndex][0] += force[0];
-      vertexForces[vertexIndex][1] += force[1];
-      numberOfInfluencers[vertexIndex]++;
-    }
-  }
-  var maxForce = 0.0;
-  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
-  {
-    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
-    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
-    var mag = Math.sqrt(
-      Math.pow(vertexForces[vertexIndex][0], 2) + Math.pow(vertexForces[vertexIndex][1], 2) 
-    );
-    if(mag > maxForce)
-      maxForce = mag;
-  }
-
-  // update NVVoronoiVertices
-  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
-  {
-    NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
-    NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
-  }
-
-  // update meshes
-  for(var c = 0; c < NVClusters.length; c++)
-  {
-    NVClusters[c].updateMesh();
-  }
-
-  // render
-  requestAnimationFrame(NVRender);
-
-  lastTime = time;
-
-  window.setTimeout(stepWeightedVoronoi, DELAY);
-}
-
-function NVRender() {
-
-  renderer.render( scene, camera );
-}
