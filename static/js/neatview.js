@@ -41,7 +41,11 @@ function Cluster(data){
      clusterTexture = testTexture;
      NVLoadedOrFailedClusterCount++;
    }
-  
+ 
+   var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
+     return NVVoronoiVertices[vertexIndex];
+   });
+
    var geometry = new THREE.Geometry();
    geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
   
@@ -50,21 +54,40 @@ function Cluster(data){
      geometry.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
    }
 
-   var material = new THREE.MeshBasicMaterial({
-     //map: testTexture,
-     map: clusterTexture,
-     transparent: true,
-     opacity: 0.5,
-     //color: 0x991111
-   });
-   
-   this.mesh = new THREE.Mesh( geometry, material );
-   this.mesh.position.x = 0.0;
-   this.mesh.position.y = 0.0;
-   
-   scene.add( this.mesh );
+  var uv = [];
+  for(var v = 0; v < geometry.vertices.length; v++)
+  {
+    var vertex = geometry.vertices[v];
+    uv.push(new THREE.UV( 0.0, 0.0 ));
+  }
+  for(var f = 1; f <= boundaryPoints.length; f++)
+  {
+    var v1 = f;
+    var v2 = (f % boundaryPoints.length) + 1;
+  
+    geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
+    geometry.faceVertexUvs[ 0 ].push([
+      uv[0],
+      uv[v1],
+      uv[v2]
+    ]);
+  }
 
-   this.updateMesh();
+  var material = new THREE.MeshBasicMaterial({
+    //map: testTexture,
+    map: clusterTexture,
+    transparent: true,
+    opacity: 0.5,
+    //color: 0x991111
+  });
+  
+  this.mesh = new THREE.Mesh( geometry, material );
+  this.mesh.position.x = 0.0;
+  this.mesh.position.y = 0.0;
+  
+  scene.add( this.mesh );
+
+  this.updateMesh();
 }
 
 Cluster.prototype.forceOnPoint = function(point)
@@ -89,7 +112,7 @@ Cluster.prototype.updateMesh = function()
  
   // do mesh of image
   var p, uv = [];
-  boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
+  var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
     return NVVoronoiVertices[vertexIndex];
   });
   for(p = 0; p < boundaryPoints.length; p++)
@@ -144,12 +167,8 @@ Cluster.prototype.updateMesh = function()
     var v1 = f;
     var v2 = (f % boundaryPoints.length) + 1;
   
-    this.mesh.geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
-    this.mesh.geometry.faceVertexUvs[ 0 ].push([
-      uv[0],
-      uv[v1],
-      uv[v2]
-    ]);
+    //this.mesh.geometry.faces.push( new THREE.Face3( 0, v1, v2 ) );
+    this.mesh.geometry.faceVertexUvs[0][f-1] = [ uv[0], uv[v1], uv[v2] ];
   }
   
   this.mesh.geometry.computeBoundingSphere();
