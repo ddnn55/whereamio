@@ -3,13 +3,8 @@ var TESSELATION_CANALS_WIDTH = 4;
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var map, mapBounds;
-var camera, scene, canvas;
-var geometry, material, mesh, testTexture;
+var material, mesh, testTexture;
 var NV;
-var NVVoronoiVertices;
-var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusterDensityMedian;
-var NVVoronoiRelaxationDamping = 1;
-
 
 function NVUnixTime()
 {
@@ -44,10 +39,15 @@ function median(list)
 var DELAY = 1000.0 / 60;
 function Neatview()
 {
-  this.clusters = [];
-  this.lastTime = null;
-
   var _this = this;
+  
+  this.clusters = [];
+  this.voronoiVertices;
+  this.lastTime = null;
+  this.loadedOrFailedClusterCount = 0;
+  this.textureRequestCount = 0;
+  this.clusterCount = 0;
+  this.clusterDensityMedian;
 
   this.datGui = new dat.GUI();
   
@@ -112,13 +112,13 @@ Neatview.prototype.loadTile = function(data)
   var imageUrl = "static/img/grid.png";
   testTexture = new THREE.ImageUtils.loadTexture( imageUrl );
 
-  NVVoronoiVertices = data['voronoi_vertices']
-  NVClusterCount = data['clusters'].length;
+  this.voronoiVertices = data['voronoi_vertices']
+  this.clusterCount = data['clusters'].length;
 
   // DEBUG DELETEME FIXME just first few
-  NVClusterCount = 100;
+  this.clusterCount = 100;
 
-  for(var c = 0; c < NVClusterCount; c++) 
+  for(var c = 0; c < this.clusterCount; c++) 
   {
     var cluster_data = data['clusters'][c];
     var cluster = new Cluster(cluster_data);
@@ -130,6 +130,13 @@ Neatview.prototype.loadTile = function(data)
   this.render();
 }
 
+Neatview.prototype.allClustersLoaded = function()
+{
+  NV.render();
+  console.log("NV Loaded");
+  NV.stepWeightedVoronoi();
+}
+
 Neatview.prototype.computeTotalDensity = function()
 {
   var densities = [];
@@ -138,13 +145,13 @@ Neatview.prototype.computeTotalDensity = function()
     var cluster = this.clusters[c];
     densities.push(cluster.computeDensity());
   }
-  NVClusterDensityMedian = median(densities);
+  NV.clusterDensityMedian = median(densities);
   var totalCount = this.clusters.map(function(c) { return c.count }).reduce(function(a, b) { return a+b });
   var totalArea = this.clusters.map(function(c) { return c.area() }).reduce(function(a, b) { return a+b });
   var totalDensity = totalCount / totalArea;
   console.log('totalDensity', totalDensity);
   return totalDensity;
-  //console.log('NVTotalDensity', NVTotalDensity);
+  //console.log('NV.totalDensity', NV.totalDensity);
 }
 
 Neatview.prototype.stepWeightedVoronoi = function()
@@ -158,15 +165,15 @@ Neatview.prototype.stepWeightedVoronoi = function()
 
 
   // calculate forces
-  var vertexForces = NVVoronoiVertices.map(function(vertex) { return [0.0, 0.0]});
-  var numberOfInfluencers = NVVoronoiVertices.map(function(vertex) { return 0});
+  var vertexForces = _this.voronoiVertices.map(function(vertex) { return [0.0, 0.0]});
+  var numberOfInfluencers = _this.voronoiVertices.map(function(vertex) { return 0});
   for(var c = 0; c < this.clusters.length; c++)
   {
     var cluster = this.clusters[c];
     cluster.updateDensity();
 
     // this cluster too big or too small?
-    //console.log('my density', cluster.density, 'total', NVTotalDensity);
+    //console.log('my density', cluster.density, 'total', NV.totalDensity);
     //console.log('my power', power);
     //console.log('-----');
 
@@ -174,17 +181,17 @@ Neatview.prototype.stepWeightedVoronoi = function()
     for(var v = 0; v < cluster.boundaryVertices.length; v++)
     {
       var vertexIndex = cluster.boundaryVertices[v];
-      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]).map(function(v) { return timeStep * v });
+      var force = cluster.forceOnPoint(_this.voronoiVertices[vertexIndex]).map(function(v) { return timeStep * v });
       vertexForces[vertexIndex][0] += force[0];
       vertexForces[vertexIndex][1] += force[1];
       numberOfInfluencers[vertexIndex]++;
     }
   }
   var maxForce = 0.0;
-  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  for(var vertexIndex = 0; vertexIndex < _this.voronoiVertices.length; vertexIndex++)
   {
-    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
-    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
+    vertexForces[vertexIndex][0] /= numberOfInfluencers[vertexIndex];
+    vertexForces[vertexIndex][1] /= numberOfInfluencers[vertexIndex];
     var mag = Math.sqrt(
       Math.pow(vertexForces[vertexIndex][0], 2) + Math.pow(vertexForces[vertexIndex][1], 2) 
     );
@@ -193,10 +200,10 @@ Neatview.prototype.stepWeightedVoronoi = function()
   }
 
   // update NVVoronoiVertices
-  for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
+  for(var vertexIndex = 0; vertexIndex < _this.voronoiVertices.length; vertexIndex++)
   {
-    NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
-    NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
+    _this.voronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
+    _this.voronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
   }
 
   // update meshes
@@ -228,24 +235,24 @@ function Cluster(data){
      var imageUrl = data['image']['image_url'];
      clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null,
        function() { // onLoad
-         NVLoadedOrFailedClusterCount++;
-         if(NVLoadedOrFailedClusterCount == NVClusterCount)
-           NVAllClustersLoaded();
+         NV.loadedOrFailedClusterCount++;
+         if(NV.loadedOrFailedClusterCount == NV.clusterCount)
+           NV.allClustersLoaded();
        },
        function() { // onFail
          console.warn("NV: A texture failed to load");
-	 NVLoadedOrFailedClusterCount++;
+	 NV.loadedOrFailedClusterCount++;
        }
      );
    }
    else
    {
      clusterTexture = testTexture;
-     NVLoadedOrFailedClusterCount++;
+     NV.loadedOrFailedClusterCount++;
    }
  
    var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
-     return NVVoronoiVertices[vertexIndex];
+     return NV.voronoiVertices[vertexIndex];
    });
 
    var geometry = new THREE.Geometry();
@@ -346,7 +353,7 @@ Cluster.prototype.updateMesh = function()
   // do mesh of image
   var p, uv = [];
   var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
-    return NVVoronoiVertices[vertexIndex];
+    return NV.voronoiVertices[vertexIndex];
   });
   for(p = 0; p < boundaryPoints.length; p++)
   {
@@ -413,38 +420,9 @@ Cluster.prototype.updateMesh = function()
 }
 /******* End Cluster *******/
 
-
-function latLngToCanvasXY(latLng)
-{
-  var mapHeight = mapBounds.top - mapBounds.bottom;
-  var mapWidth = mapBounds.right - mapBounds.left;
-
-  var latIn = latLng[0];
-  var lngIn = latLng[1];
-  
-  var out = {};
-  out.x = canvas.width  * (lngIn - mapBounds.left)   / mapWidth;
-  out.y = canvas.height * (latIn - mapBounds.bottom) / mapHeight;
-
-  return out;
-}
-
 function initNV() {
-
   NV = new Neatview();
-  
-
-
-  
   //$.getJSON('debug', receiveDebug);
-
-}
-
-function NVAllClustersLoaded()
-{
-  NV.render();
-  console.log("NV Loaded");
-  NV.stepWeightedVoronoi();
 }
 
 function receiveDebug(geometries)
@@ -496,7 +474,7 @@ function debugMeshCreate(mesh)
   mesh.position.y = 0.0;
   mesh.position.z = 0.1;
 
-  scene.add( mesh );
+  NV.scene.add( mesh );
 }
 
 function debugVoronoiCreate(voronoi)
@@ -542,7 +520,7 @@ function debugVoronoiCreate(voronoi)
     polyline.position.y = 0.0;
     polyline.position.z = 0.1;
 
-    scene.add( polyline );
+    NV.scene.add( polyline );
   }
   
   console.log('debugVoronoiCreate end');
