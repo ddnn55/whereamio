@@ -15,6 +15,10 @@ def layout(tile):
   delaunay_vertices = triangulation.points.tolist()
   delaunay_triangles = triangulation.vertices.tolist()
 
+  #triangles_and_neighbors = zip(delaunay_triangles, triangulation.neighbors)
+  #triangles_and_neighbors_no_edge = filter(lambda triangle_and_neighbors: -1 not in triangle_and_neighbors[1], triangles_and_neighbors)
+  #delaunay_triangles, neighbors = zip(*triangles_and_neighbors_no_edge)
+
   delaunay_triangulation = {
     'name'      : 'delaunay triangulation',
     'type'      : 'mesh',

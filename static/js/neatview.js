@@ -1,10 +1,12 @@
+var TESSELATION_CANALS_WIDTH = 4;
+
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 var map, mapBounds;
 var camera, scene, renderer, canvas;
 var geometry, material, mesh, testTexture;
 var NVVoronoiVertices;
-var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusters;
+var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusterDensityMedian, NVClusters;
 var NVVoronoiRelaxationDamping = 1;
 
 function NVUnixTime()
@@ -12,10 +14,52 @@ function NVUnixTime()
   return Math.round((new Date()).getTime() / 1000);
 }
 
+function triangleArea(t)
+{
+  var x1 = t[1].x - t[0].x;
+  var y1 = t[1].y - t[0].y;
+  var x2 = t[2].x - t[0].x;
+  var y2 = t[2].y - t[0].y;
+  var area = 0.5 * Math.abs(x1*y1-x2*y2);
+  return area;
+}
+
+function median(list)
+{
+  list.sort();
+  return list[Math.floor(list.length/2)];
+}
+
+function NVComputeTotalDensity()
+{
+  var densities = [];
+  for(var c = 0; c < NVClusters.length; c++)
+  {
+    var cluster = NVClusters[c];
+    densities.push(cluster.computeDensity());
+  }
+  NVClusterDensityMedian = median(densities);
+  var totalCount = NVClusters.map(function(c) { return c.count }).reduce(function(a, b) { return a+b });
+  var totalArea = NVClusters.map(function(c) { return c.area() }).reduce(function(a, b) { return a+b });
+  var totalDensity = totalCount / totalArea;
+  console.log('totalDensity', totalDensity);
+  return totalDensity;
+  //console.log('NVTotalDensity', NVTotalDensity);
+}
+
+/*function latLngTranslatedByPointsTowardPoint(latLngFrom, screenDistance, latLngTarget)
+{
+  var latLngDirection = [ latLngTarget[0] - latLngFrom[0], latLngTarget[1] - latLngFrom[1] ];
+  var screenDirection = [ latLngDirection[1], latLngDirection[0] ]; // FIXME TODO fix latLng vs. screen aspect here, need a more abstract solution... :(
+
+  var screenDestination
+}*/
+
 /******* Class Cluster ***********/
 function Cluster(data){
    this.data = data;
    this.center = data.center;
+   this.count = data.count;
    this.boundaryVertices = data['voronoi_vertices'];
 
    // can't put a flickr.com URL here unless they enable CORS :(
@@ -77,7 +121,7 @@ function Cluster(data){
     //map: testTexture,
     map: clusterTexture,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.8,
     //color: 0x991111
   });
   
@@ -92,14 +136,45 @@ function Cluster(data){
 
 Cluster.prototype.forceOnPoint = function(point)
 {
-  var absDiff = [
+  var pushPower = (this.density - NVTotalDensity) / NVTotalDensity;
+  
+  /*var absDistance = [
     Math.abs(this.center[0] - point[0]),
     Math.abs(this.center[1] - point[1])
   ];
-  return [
-    (this.center[0] - point[0]) * absDiff[0],
-    (this.center[1] - point[1]) * absDiff[1]
-  ];
+  var signedSquaredDistance = [
+    (this.center[0] - point[0]) * absDistance[0],
+    (this.center[1] - point[1]) * absDistance[1]
+  ];*/
+  var angle = Math.atan2(point[0] - this.center[0], point[1] - this.center[1]);
+  var forceX = pushPower * Math.cos(angle) / 1000.0;
+  var forceY = pushPower * Math.sin(angle) / 1000.0;
+
+  return [forceY, forceX]; // lat, lng = y, x
+}
+
+Cluster.prototype.area = function()
+{
+  var cluster = this;
+  var area = 0.0;
+  this.mesh.geometry.faces.map(function(face) {
+    area += triangleArea([
+      cluster.mesh.geometry.vertices[ face.a ],
+      cluster.mesh.geometry.vertices[ face.b ],
+      cluster.mesh.geometry.vertices[ face.c ]
+    ]);
+  });
+  return area;
+}
+
+Cluster.prototype.computeDensity = function()
+{
+  return this.data.count / this.area();
+}
+
+Cluster.prototype.updateDensity = function()
+{
+  return this.density = this.computeDensity();
 }
 
 Cluster.prototype.updateMesh = function()
@@ -117,6 +192,7 @@ Cluster.prototype.updateMesh = function()
   });
   for(p = 0; p < boundaryPoints.length; p++)
   {
+    //var point = latLngTranslatedByPointsTowardPoint(boundaryPoints[p], TESSELATION_CANAL_WIDTH, this.center);
     var point = boundaryPoints[p];
     //this.mesh.geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
     this.mesh.geometry.vertices[p+1].x = point[1];
@@ -356,8 +432,8 @@ function NVLoadTile(data)
   NVVoronoiVertices = data['voronoi_vertices']
   NVClusterCount = data['clusters'].length;
 
-  // DEBUG DELETEME FIXME just first 10
-  NVClusterCount = 10;
+  // DEBUG DELETEME FIXME just first few
+  NVClusterCount = 100;
 
   for(var c = 0; c < NVClusterCount; c++) 
   {
@@ -366,22 +442,40 @@ function NVLoadTile(data)
     NVClusters.push(cluster);
   }
 
-  requestAnimationFrame(NVRender);
+  NVTotalDensity = NVComputeTotalDensity();
+  
+  NVRender();
 }
 
-
+var lastTime = null;
+var DELAY = 1000.0 / 60;
 function stepWeightedVoronoi()
 {
+
+  var time = (new Date()).getTime() / 1000.0;
+  if(lastTime == null)
+    lastTime = time;
+  var timeStep = time - lastTime;
+
+
   // calculate forces
   var vertexForces = NVVoronoiVertices.map(function(vertex) { return [0.0, 0.0]});
   var numberOfInfluencers = NVVoronoiVertices.map(function(vertex) { return 0});
   for(var c = 0; c < NVClusters.length; c++)
   {
     var cluster = NVClusters[c];
+    cluster.updateDensity();
+
+    // this cluster too big or too small?
+    //console.log('my density', cluster.density, 'total', NVTotalDensity);
+    //console.log('my power', power);
+    //console.log('-----');
+
+    // append cluster's pushPower to cluster's voronoi vertices
     for(var v = 0; v < cluster.boundaryVertices.length; v++)
     {
       var vertexIndex = cluster.boundaryVertices[v];
-      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]);
+      var force = cluster.forceOnPoint(NVVoronoiVertices[vertexIndex]).map(function(v) { return timeStep * v });
       vertexForces[vertexIndex][0] += force[0];
       vertexForces[vertexIndex][1] += force[1];
       numberOfInfluencers[vertexIndex]++;
@@ -415,12 +509,12 @@ function stepWeightedVoronoi()
   // render
   requestAnimationFrame(NVRender);
 
-  window.setTimeout(stepWeightedVoronoi, 100);
+  lastTime = time;
+
+  window.setTimeout(stepWeightedVoronoi, DELAY);
 }
 
 function NVRender() {
-  var d = new Date();
-  var time = d.getTime() / 1000.0;
 
   renderer.render( scene, camera );
 }
