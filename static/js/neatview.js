@@ -5,9 +5,11 @@ if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 var map, mapBounds;
 var camera, scene, renderer, canvas;
 var geometry, material, mesh, testTexture;
+var NV;
 var NVVoronoiVertices;
 var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusterDensityMedian, NVClusters;
 var NVVoronoiRelaxationDamping = 1;
+
 
 function NVUnixTime()
 {
@@ -54,6 +56,28 @@ function NVComputeTotalDensity()
 
   var screenDestination
 }*/
+
+/******* Class Neatview **********/
+function Neatview()
+{
+  var _this = this;
+
+  this.datGui = new dat.GUI();
+  
+  this.opacity = 0.5;
+  this.datGui.add(this, 'opacity', 0.0, 1.0).onChange(function(opacity) {
+    _this.setOpacity(opacity);
+  });
+}
+
+Neatview.prototype.setOpacity = function(opacity)
+{
+  for(var c = 0; c < NVClusters.length; c++)
+  {
+    var cluster = NVClusters[c];
+    cluster.mesh.material.opacity = opacity;
+  }
+}
 
 /******* Class Cluster ***********/
 function Cluster(data){
@@ -121,7 +145,7 @@ function Cluster(data){
     //map: testTexture,
     map: clusterTexture,
     transparent: true,
-    opacity: 0.8,
+    opacity: NV.opacity,
     //color: 0x991111
   });
   
@@ -307,6 +331,8 @@ function initNV() {
 
   NVClusters = [];
 
+  NV = new Neatview();
+  
   //$.getJSON('debug', receiveDebug);
 
 }
@@ -421,6 +447,7 @@ function debugVoronoiCreate(voronoi)
 
 function NVLoadTile(data)
 {
+  
   mapBounds.left   = map.getBounds().getSouthWest().lng();
   mapBounds.bottom = map.getBounds().getSouthWest().lat();
   mapBounds.right  = map.getBounds().getNorthEast().lng();
@@ -443,7 +470,10 @@ function NVLoadTile(data)
   }
 
   NVTotalDensity = NVComputeTotalDensity();
-  
+
+
+
+
   NVRender();
 }
 
