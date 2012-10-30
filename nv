@@ -326,24 +326,28 @@ def _build_map(args):
   dpy.ensure_dir(os.path.join(out, 'static/js'))
   dpy.ensure_dir(os.path.join(out, 'static/css'))
   dpy.ensure_dir(os.path.join(out, 'static/flickr'))
+  dpy.ensure_dir(os.path.join(out, 'static/img'))
+  dpy.ensure_dir(os.path.join(out, 'static/tile'))
   shutil.copyfile('static/index.html', os.path.join(args.output_path, 'index.html'))
   shutil.copyfile('static/Console.js', os.path.join(out, 'static/Console.js'))
   shutil.copyfile('static/js/neatview.js', os.path.join(out, 'static/js/neatview.js'))
   shutil.copyfile('static/js/dgeo.js', os.path.join(out, 'static/js/dgeo.js'))
   shutil.copyfile('static/js/three.min.js', os.path.join(out, 'static/js/three.js'))
+  shutil.copyfile('static/js/Detector.js', os.path.join(out, 'static/js/Detector.js'))
   shutil.copyfile('static/css/neatview.css', os.path.join(out, 'static/css/neatview.css'))
+  shutil.copyfile('static/img/grid.png', os.path.join(out, 'static/img/grid.png'))
+  shutil.copyfile('static/tile/all', os.path.join(out, 'static/tile/all'))
   
-  clusters_json = Console.clusters().data
-  clusters_file = open(os.path.join(out, 'clusters'), 'w')
-  clusters_file.write(clusters_json)
+  tile = json.load(open('static/tile/all', 'r'))
 
-  for cluster in json.loads(clusters_json):
-    image_dir = os.path.dirname(cluster['image_url'])
-    dpy.ensure_dir(os.path.join(out, image_dir))
+  for cluster in tile['clusters']:
+    if 'image' in cluster:
+      image_dir = os.path.dirname(cluster['image']['image_url'])
+      dpy.ensure_dir(os.path.join(out, image_dir))
 
-    big_image = Image.open(cluster['image_url'])
-    big_image.thumbnail((512, 512))
-    big_image.save(os.path.join(out, cluster['image_url']))
+      big_image = Image.open(cluster['image']['image_url'])
+      big_image.thumbnail((512, 512))
+      big_image.save(os.path.join(out, cluster['image']['image_url']))
 
 
 parser = argparse.ArgumentParser()
