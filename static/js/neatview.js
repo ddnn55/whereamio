@@ -92,7 +92,6 @@ Cluster.prototype.updateMesh = function()
   boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
     return NVVoronoiVertices[vertexIndex];
   });
-  console.log(boundaryPoints);
   for(p = 0; p < boundaryPoints.length; p++)
   {
     var point = boundaryPoints[p];
@@ -380,17 +379,12 @@ function stepWeightedVoronoi()
     if(mag > maxForce)
       maxForce = mag;
   }
-  console.log("vertexForces", vertexForces);
-  console.log('maxForce', maxForce);
 
   // update NVVoronoiVertices
   for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
   {
     NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
     NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
-
-    // DEBUG DELETEME FIXME
-    //NVVoronoiVertices[vertexIndex][0] += 0.001;
   }
 
   // update meshes
