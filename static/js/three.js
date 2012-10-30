@@ -18240,7 +18240,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			_gl.bindBuffer( _gl.ARRAY_BUFFER, position.buffer );
 			_gl.bufferData( _gl.ARRAY_BUFFER, position.array, hint );
-
+			console.log("called gl.bufferData()");
 		}
 
 		if ( geometry.normalsNeedUpdate && normal !== undefined ) {

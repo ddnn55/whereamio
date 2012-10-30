@@ -7,6 +7,11 @@ var NVVoronoiVertices;
 var NVLoadedOrFailedClusterCount = 0, NVTextureRequestCount = 0, NVClusterCount, NVClusters;
 var NVVoronoiRelaxationDamping = 1;
 
+function NVUnixTime()
+{
+  return Math.round((new Date()).getTime() / 1000);
+}
+
 /******* Class Cluster ***********/
 function Cluster(data){
    this.data = data;
@@ -39,7 +44,12 @@ function Cluster(data){
   
    var geometry = new THREE.Geometry();
    geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
-   
+  
+   for(p = 0; p < data.voronoi_vertices.length; p++)
+   {
+     geometry.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+   }
+
    var material = new THREE.MeshBasicMaterial({
      //map: testTexture,
      map: clusterTexture,
@@ -59,9 +69,13 @@ function Cluster(data){
 
 Cluster.prototype.forceOnPoint = function(point)
 {
+  var absDiff = [
+    Math.abs(this.center[0] - point[0]),
+    Math.abs(this.center[1] - point[1])
+  ];
   return [
-    Math.pow(this.center[0] - point[0], 2),
-    Math.pow(this.center[1] - point[1], 2)
+    (this.center[0] - point[0]) * absDiff[0],
+    (this.center[1] - point[1]) * absDiff[1]
   ];
 }
 
@@ -78,10 +92,13 @@ Cluster.prototype.updateMesh = function()
   boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
     return NVVoronoiVertices[vertexIndex];
   });
+  console.log(boundaryPoints);
   for(p = 0; p < boundaryPoints.length; p++)
   {
     var point = boundaryPoints[p];
-    this.mesh.geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+    //this.mesh.geometry.vertices.push( new THREE.Vector3( point[1], point[0], 0 ) );
+    this.mesh.geometry.vertices[p+1].x = point[1];
+    this.mesh.geometry.vertices[p+1].y = point[0];
     left   = Math.min(left, point[1]);
     right  = Math.max(right, point[1]);
     top    = Math.max(top, point[0]);
@@ -136,10 +153,11 @@ Cluster.prototype.updateMesh = function()
     ]);
   }
   
-
-  
   this.mesh.geometry.computeBoundingSphere();
   this.mesh.geometry.computeBoundingBox();
+
+  this.mesh.geometry.verticesNeedUpdate = true;
+  this.mesh.geometry.uvsNeedUpdate = true;
 }
 /******* End Cluster *******/
 
@@ -320,7 +338,10 @@ function NVLoadTile(data)
   NVVoronoiVertices = data['voronoi_vertices']
   NVClusterCount = data['clusters'].length;
 
-  for(var c = 0; c < data['clusters'].length; c++)
+  // DEBUG DELETEME FIXME just first 10
+  NVClusterCount = 10;
+
+  for(var c = 0; c < NVClusterCount; c++) 
   {
     var cluster_data = data['clusters'][c];
     var cluster = new Cluster(cluster_data);
@@ -348,28 +369,40 @@ function stepWeightedVoronoi()
       numberOfInfluencers[vertexIndex]++;
     }
   }
+  var maxForce = 0.0;
   for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
   {
-    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] + NVVoronoiRelaxationDamping);
-    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] + NVVoronoiRelaxationDamping);
+    vertexForces[vertexIndex][0] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
+    vertexForces[vertexIndex][1] /= (numberOfInfluencers[vertexIndex] * NVVoronoiRelaxationDamping);
+    var mag = Math.sqrt(
+      Math.pow(vertexForces[vertexIndex][0], 2) + Math.pow(vertexForces[vertexIndex][1], 2) 
+    );
+    if(mag > maxForce)
+      maxForce = mag;
   }
   console.log("vertexForces", vertexForces);
+  console.log('maxForce', maxForce);
 
   // update NVVoronoiVertices
   for(var vertexIndex = 0; vertexIndex < NVVoronoiVertices.length; vertexIndex++)
   {
     NVVoronoiVertices[vertexIndex][0] += vertexForces[vertexIndex][0];
     NVVoronoiVertices[vertexIndex][1] += vertexForces[vertexIndex][1];
+
+    // DEBUG DELETEME FIXME
+    //NVVoronoiVertices[vertexIndex][0] += 0.001;
   }
 
   // update meshes
   for(var c = 0; c < NVClusters.length; c++)
   {
-    var cluster = NVClusters[c];
-    cluster.updateMesh();
+    NVClusters[c].updateMesh();
   }
 
-  //window.setTimeout(stepWeightedVoronoi, 100);
+  // render
+  requestAnimationFrame(NVRender);
+
+  window.setTimeout(stepWeightedVoronoi, 100);
 }
 
 function NVRender() {
