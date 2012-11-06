@@ -49,7 +49,7 @@ function Neatview()
   this.clusterCount = 0;
   this.clusterDensityMedian;
 
-  this.datGui = new dat.GUI();
+  this.datGui = new dat.GUI({ width: 400 });
   this.options = {};
 
   this.options.opacity = 0.5;
