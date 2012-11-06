@@ -50,10 +50,21 @@ function Neatview()
   this.clusterDensityMedian;
 
   this.datGui = new dat.GUI();
-  
-  this.opacity = 0.5;
-  this.datGui.add(this, 'opacity', 0.0, 1.0).onChange(function(opacity) {
+  this.options = {};
+
+  this.options.opacity = 0.5;
+  this.datGui.add(this.options, 'opacity', 0.0, 1.0).onChange(function(opacity) {
     _this.setOpacity(opacity);
+  });
+
+  this.options.drawImages = true;
+  this.datGui.add(this.options, 'drawImages').onChange(function() {
+    _this.render();
+  });
+
+  this.options.drawImplicitWeightedVoronoi = true;
+  this.datGui.add(this.options, 'drawImplicitWeightedVoronoi').onChange(function() {
+    _this.render();
   });
 
   this.threeCanvas = document.getElementById('three_canvas');
@@ -87,9 +98,21 @@ function Neatview()
   });
 }
 
+Neatview.prototype.needsRender = function()
+{
+  var _this = this;
+  requestAnimationFrame(function() { _this.render() });
+}
+
 Neatview.prototype.render = function()
 {
-  this.threeRenderer.render( this.scene, this.camera );
+  this.threeRenderer.clear();
+
+  if(this.options.drawImages)
+    this.threeRenderer.render( this.scene, this.camera );
+  
+  if(this.options.drawImplicitWeightedVoronoi)
+    this.threeRenderer.render( this.weightedVoronoiScene, this.weightedVoronoiCamera );
 }
 
 Neatview.prototype.setOpacity = function(opacity)
@@ -99,6 +122,7 @@ Neatview.prototype.setOpacity = function(opacity)
     var cluster = this.clusters[c];
     cluster.mesh.material.opacity = opacity;
   }
+  this.needsRender();
 }
 
 Neatview.prototype.loadTile = function(data)
@@ -134,7 +158,7 @@ Neatview.prototype.allClustersLoaded = function()
 {
   NV.render();
   console.log("NV Loaded");
-  NV.stepWeightedVoronoi();
+  //NV.stepWeightedVoronoi();
 }
 
 Neatview.prototype.computeTotalDensity = function()
@@ -156,6 +180,8 @@ Neatview.prototype.computeTotalDensity = function()
 
 Neatview.prototype.stepWeightedVoronoi = function()
 {
+  console.log('stepWeightedVoronoi');
+
   var _this = this;
 
   var time = (new Date()).getTime() / 1000.0;
@@ -286,7 +312,7 @@ function Cluster(data){
     //map: testTexture,
     map: clusterTexture,
     transparent: true,
-    opacity: NV.opacity,
+    opacity: NV.options.opacity,
     //color: 0x991111
   });
   
