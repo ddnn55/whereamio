@@ -1,3 +1,4 @@
+
 var TESSELATION_CANALS_WIDTH = 4;
 
 if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
@@ -71,7 +72,7 @@ function Neatview()
   this.threeCanvas.width  = $('#map_canvas').width();
   this.threeCanvas.height = $('#map_canvas').height();
 
-  this.camera = new THREE.OrthographicCamera( 0, this.threeCanvas.width, this.threeCanvas.height, 0, -1, 1 );
+  this.camera = new THREE.OrthographicCamera( 0, this.threeCanvas.width, this.threeCanvas.height, 0, -1, 1000 );
   this.scene = new THREE.Scene();
   this.threeRenderer = new THREE.WebGLRenderer({
     canvas: _this.threeCanvas,
@@ -111,8 +112,8 @@ Neatview.prototype.render = function()
   if(this.options.drawImages)
     this.threeRenderer.render( this.scene, this.camera );
   
-  if(this.options.drawImplicitWeightedVoronoi)
-    this.threeRenderer.render( this.weightedVoronoiScene, this.weightedVoronoiCamera );
+  if(this.options.drawImplicitWeightedVoronoi && this.weightedVoronoi)
+    this.threeRenderer.render( this.weightedVoronoi.scene, this.camera );
 }
 
 Neatview.prototype.setOpacity = function(opacity)
@@ -150,6 +151,7 @@ Neatview.prototype.loadTile = function(data)
   }
 
   this.totalDensity = this.computeTotalDensity();
+  this.weightedVoronoi = new WeightedVoronoi(this.clusters);
 
   this.render();
 }
