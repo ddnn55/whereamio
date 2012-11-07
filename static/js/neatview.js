@@ -141,7 +141,7 @@ Neatview.prototype.loadTile = function(data)
   this.clusterCount = data['clusters'].length;
 
   // DEBUG DELETEME FIXME just first few
-  this.clusterCount = 100;
+  //this.clusterCount = 100;
 
   for(var c = 0; c < this.clusterCount; c++) 
   {

@@ -6,18 +6,16 @@ function WeightedVoronoi(clusters)
   for(var c = 0; c < this.cones.length; c++)
   {
     this.scene.add(this.cones[c]);
-    //this.scene.add(sphere(this.clusters[c].center, 0.05, randomColor()));
   }
-
-  console.log('cones:', this.cones);
 }
 
 function clusterToCone(cluster)
 {
-  var coneLength = 1.0;
+  var length = 1.0;
   var steps = 32;
+  var angle = (cluster.count/400000) * Math.PI / 4.0;
   
-  var coneMesh = cone(coneLength, steps);
+  var coneMesh = cone(length, steps, angle);
   //var coneMesh = sphere(cluster.center, 0.05, randomColor());
   coneMesh.position.x = cluster.center[1];
   coneMesh.position.y = cluster.center[0];
@@ -27,17 +25,20 @@ function clusterToCone(cluster)
   return coneMesh;
 }
 
-function cone(radius, steps)
+function cone(radius, steps, angle)
 {
+  // ensure all cones extend to/beyond edges of viewport
   var coneGeometry = new THREE.Geometry();
   coneGeometry.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
   for(var s = 0; s < steps; s++)
   {
-    var theta = 2.0 * Math.PI * s / steps;
+    var xyAngle = 2.0 * Math.PI * s / steps;
+    var xyRadius = radius * Math.sin(angle);
+    var depth = radius * Math.cos(angle);
     coneGeometry.vertices.push( new THREE.Vector3(
-      radius * Math.cos(theta),
-      radius * Math.sin(theta),
-      -radius
+      xyRadius * Math.cos(xyAngle),
+      xyRadius * Math.sin(xyAngle),
+      -depth
     ));
   }
   for(var s = 0; s < steps; s++)
