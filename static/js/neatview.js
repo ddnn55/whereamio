@@ -250,46 +250,46 @@ Neatview.prototype.stepWeightedVoronoi = function()
 
 /******* Class Cluster ***********/
 function Cluster(data){
-   this.data = data;
-   this.center = data.center;
-   this.count = data.count;
-   this.boundaryVertices = data['voronoi_vertices'];
+  this.data = data;
+  this.center = data.center;
+  this.count = data.count;
+  this.boundaryVertices = data['voronoi_vertices'];
 
-   // can't put a flickr.com URL here unless they enable CORS :(
-   // http://enable-cors.org/
-   var clusterTexture;
-   if(data['image'] !== undefined)
-   {
-     var imageUrl = data['image']['image_url'];
-     clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null,
-       function() { // onLoad
-         NV.loadedOrFailedClusterCount++;
-         if(NV.loadedOrFailedClusterCount == NV.clusterCount)
-           NV.allClustersLoaded();
-       },
-       function() { // onFail
-         console.warn("NV: A texture failed to load");
-	 NV.loadedOrFailedClusterCount++;
-       }
-     );
-   }
-   else
-   {
-     clusterTexture = testTexture;
-     NV.loadedOrFailedClusterCount++;
-   }
+  // can't put a flickr.com URL here unless they enable CORS :(
+  // http://enable-cors.org/
+  var clusterTexture;
+  if(data['image'] !== undefined)
+  {
+    var imageUrl = data['image']['image_url'];
+    clusterTexture = new THREE.ImageUtils.loadTexture( imageUrl, null,
+      function() { // onLoad
+        NV.loadedOrFailedClusterCount++;
+        if(NV.loadedOrFailedClusterCount == NV.clusterCount)
+          NV.allClustersLoaded();
+      },
+      function() { // onFail
+        console.warn("NV: A texture failed to load");
+        NV.loadedOrFailedClusterCount++;
+      }
+    );
+  }
+  else
+  {
+    clusterTexture = testTexture;
+    NV.loadedOrFailedClusterCount++;
+  }
  
-   var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
-     return NV.voronoiVertices[vertexIndex];
-   });
+  var boundaryPoints = this.data['voronoi_vertices'].map(function(vertexIndex) {
+    return NV.voronoiVertices[vertexIndex];
+  });
 
-   var geometry = new THREE.Geometry();
-   geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push( new THREE.Vector3( data.center[1], data.center[0], 0 ) );
   
-   for(p = 0; p < data.voronoi_vertices.length; p++)
-   {
-     geometry.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
-   }
+  for(p = 0; p < data.voronoi_vertices.length; p++)
+  {
+    geometry.vertices.push( new THREE.Vector3( 0.0, 0.0, 0.0 ) );
+  }
 
   var uv = [];
   for(var v = 0; v < geometry.vertices.length; v++)
