@@ -58,7 +58,7 @@ function Neatview()
     _this.setOpacity(opacity);
   });
 
-  this.options.drawImages = true;
+  this.options.drawImages = false;
   this.datGui.add(this.options, 'drawImages').onChange(function() {
     _this.render();
   });
