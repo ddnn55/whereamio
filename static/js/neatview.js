@@ -113,7 +113,12 @@ Neatview.prototype.render = function()
     this.threeRenderer.render( this.scene, this.camera );
   
   if(this.options.drawImplicitWeightedVoronoi && this.weightedVoronoi)
+  {
+    //this.weightedVoronoi.renderLabelBuffer();
     this.threeRenderer.render( this.weightedVoronoi.scene, this.camera );
+    this.once || console.log( 'working render call', this.weightedVoronoi.scene, this.camera );
+    this.once = true;
+  }
 }
 
 Neatview.prototype.setOpacity = function(opacity)
@@ -151,7 +156,7 @@ Neatview.prototype.loadTile = function(data)
   }
 
   this.totalDensity = this.computeTotalDensity();
-  this.weightedVoronoi = new WeightedVoronoi(this.clusters);
+  this.weightedVoronoi = new WeightedVoronoi(this.clusters, this.threeCanvas);
 
   this.render();
 }
@@ -553,9 +558,3 @@ function debugVoronoiCreate(voronoi)
   
   console.log('debugVoronoiCreate end');
 }
-
-
-
-
-
-
