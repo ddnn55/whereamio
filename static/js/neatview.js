@@ -68,6 +68,27 @@ function Neatview()
     _this.render();
   });
 
+  var WV = this.datGui.addFolder('Weighted Voronoi');
+
+  this.options.coneRadius = 0.02;
+  WV.add(this.options, 'coneRadius', 0.0, 0.05).onChange(function(coneRadius){
+    _this.weightedVoronoi.coneRadius = coneRadius;
+    _this.weightedVoronoi.update();
+    _this.render();
+  });
+  this.options.coneAngleMin = Math.PI / 32.0;
+  WV.add(this.options, 'coneAngleMin', 0.0, Math.PI / 2.0).onChange(function(coneAngleMin){
+    _this.weightedVoronoi.coneAngleMin = coneAngleMin;
+    _this.weightedVoronoi.update();
+    _this.render();
+  });
+  this.options.coneAngleMax = Math.PI / 2.0;
+  WV.add(this.options, 'coneAngleMax', 0.0, Math.PI / 2.0).onChange(function(coneAngleMax){
+    _this.weightedVoronoi.coneAngleMax = coneAngleMax;
+    _this.weightedVoronoi.update();
+    _this.render();
+  });
+
   this.threeCanvas = document.getElementById('three_canvas');
   this.threeCanvas.width  = $('#map_canvas').width();
   this.threeCanvas.height = $('#map_canvas').height();
