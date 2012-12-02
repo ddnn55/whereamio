@@ -3,13 +3,21 @@ function WeightedVoronoi(clusters)
   var _this = this;
 
   this.clusters = clusters;
-  this.scene = new THREE.Scene();
 
   this.maxClusterCount = this.clusters
     .map(function(cluster) { return cluster.count })
     .reduce(function(a, b) { return Math.max(a, b) }, 0);
 
-  this.cones = this.clusters.map(function(cluster) { return clusterToCone(cluster, _this.maxClusterCount) });
+  this.update();
+}
+
+WeightedVoronoi.prototype.update = function()
+{
+  var _this = this;
+
+  this.scene = new THREE.Scene();
+
+  this.cones = this.clusters.map(function(cluster) { return _this.clusterToCone(cluster, _this.maxClusterCount) });
   for(var c = 0; c < this.cones.length; c++)
   {
     this.scene.add(this.cones[c]);
@@ -19,9 +27,9 @@ function WeightedVoronoi(clusters)
 var CONE_MIN_ANGLE = Math.PI / 32.0;
 var CONE_MAX_ANGLE = Math.PI / 2.0;
 
-function clusterToCone(cluster, maxClusterCount)
+WeightedVoronoi.prototype.clusterToCone = function(cluster, maxClusterCount)
 {
-  var length = 0.02;
+  var length = this.coneRadius;
   var steps = 64;
   var angle = CONE_MIN_ANGLE + (cluster.count/maxClusterCount) * (CONE_MAX_ANGLE - CONE_MIN_ANGLE);
   

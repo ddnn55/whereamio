@@ -68,6 +68,15 @@ function Neatview()
     _this.render();
   });
 
+  var WV = this.datGui.addFolder('Weighted Voronoi');
+
+  this.options.coneRadius = 0.02;
+  WV.add(this.options, 'coneRadius', 0.0, 0.05).onChange(function(coneRadius){
+    _this.weightedVoronoi.coneRadius = coneRadius;
+    _this.weightedVoronoi.update();
+    _this.render();
+  });
+
   this.threeCanvas = document.getElementById('three_canvas');
   this.threeCanvas.width  = $('#map_canvas').width();
   this.threeCanvas.height = $('#map_canvas').height();
