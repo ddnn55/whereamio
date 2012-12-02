@@ -3,6 +3,9 @@ function WeightedVoronoi(clusters)
   var _this = this;
 
   this.clusters = clusters;
+  this.coneRadius = 0.02;
+  this.coneAngleMin = Math.PI / 32.0;
+  this.coneAngleMax = Math.PI / 2.0;
 
   this.maxClusterCount = this.clusters
     .map(function(cluster) { return cluster.count })
@@ -24,14 +27,11 @@ WeightedVoronoi.prototype.update = function()
   }
 }
 
-var CONE_MIN_ANGLE = Math.PI / 32.0;
-var CONE_MAX_ANGLE = Math.PI / 2.0;
-
 WeightedVoronoi.prototype.clusterToCone = function(cluster, maxClusterCount)
 {
   var length = this.coneRadius;
   var steps = 64;
-  var angle = CONE_MIN_ANGLE + (cluster.count/maxClusterCount) * (CONE_MAX_ANGLE - CONE_MIN_ANGLE);
+  var angle = this.coneAngleMin + (cluster.count/maxClusterCount) * (this.coneAngleMax - this.coneAngleMin);
   
   var coneMesh;
 
