@@ -7,6 +7,8 @@ function WeightedVoronoi(clusters)
   this.coneAngleMin = Math.PI / 32.0;
   this.coneAngleMax = Math.PI / 2.0;
 
+  this.clusters = this.clusters.map(function(cluster){ cluster.color = randomColor(); return cluster; });
+
   this.maxClusterCount = this.clusters
     .map(function(cluster) { return cluster.count })
     .reduce(function(a, b) { return Math.max(a, b) }, 0);
@@ -45,7 +47,7 @@ WeightedVoronoi.prototype.clusterToCone = function(cluster, maxClusterCount)
   coneMesh.position.x = cluster.center[1];
   coneMesh.position.y = cluster.center[0];
   coneMesh.position.z = 0.0;
-  coneMesh.material.color = randomColor();
+  coneMesh.material.color = cluster.color;
 
   return coneMesh;
 }
