@@ -88,6 +88,12 @@ function Neatview()
     _this.weightedVoronoi.update();
     _this.render();
   });
+  this.options.showFraction = 1.0;
+  WV.add(this.options, 'showFraction', 0.0, 1.0).onChange(function(showFraction){
+    _this.weightedVoronoi.showFraction = showFraction;
+    _this.weightedVoronoi.update();
+    _this.render();
+  });
 
   this.threeCanvas = document.getElementById('three_canvas');
   this.threeCanvas.width  = $('#map_canvas').width();

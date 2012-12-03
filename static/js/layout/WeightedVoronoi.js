@@ -2,10 +2,16 @@ function WeightedVoronoi(clusters)
 {
   var _this = this;
 
-  this.clusters = clusters;
+  this.clusters = clusters
+    .sort(function(a, b){
+      if(a.count > b.count) return -1;
+      if(b.count < a.count) return 1;
+      return 0;
+    });
   this.coneRadius = 0.02;
   this.coneAngleMin = Math.PI / 32.0;
   this.coneAngleMax = Math.PI / 2.0;
+  this.showFraction = 1.0;
 
   this.clusters = this.clusters.map(function(cluster){ cluster.color = randomColor(); return cluster; });
 
@@ -22,7 +28,10 @@ WeightedVoronoi.prototype.update = function()
 
   this.scene = new THREE.Scene();
 
-  this.cones = this.clusters.map(function(cluster) { return _this.clusterToCone(cluster, _this.maxClusterCount) });
+  this.cones = this.clusters
+    .slice(0, (this.clusters.length-1) * this.showFraction)
+    .map(function(cluster) { return _this.clusterToCone(cluster, _this.maxClusterCount) });
+  
   for(var c = 0; c < this.cones.length; c++)
   {
     this.scene.add(this.cones[c]);
