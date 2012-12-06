@@ -120,7 +120,7 @@ d3.json("tile.json", function(json) {
         .attr("clip-path", function(d, i){
           return "url(#"+i+"-clip)";
         })
-        //.on("mouseover", function(d) { console.log(d); })
+        .on("mouseover", function(d) { console.log(d.cluster.count); })
         .on("click", function(d) { window.location = d.cluster.image.flickr_page_url; })
 
 
