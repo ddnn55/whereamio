@@ -37,7 +37,7 @@ app = Flask(__name__)
 def neatview():
     return file("static/index.html").read()
 
-@app.route('/console')
+@app.route('/nvconsole')
 def console():
     return file("static/Console.html").read()
 
@@ -80,7 +80,11 @@ def tile():
        photo = photos.find_one({'_id':image_id})
        mi = Flickr.MirroredPhoto(photo)
        cluster['representative_images'][rep_image_type] = mi.ui_metadata()
-      
+     
+     image = photos.find_one({'cluster':cluster['_id']})
+     if(image != None):
+       cluster['image'] = Flickr.MirroredPhoto(image).ui_metadata()
+
      cluster['_id'] = str(cluster['_id'])
      data.append(cluster)
    

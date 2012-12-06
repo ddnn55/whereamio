@@ -124,7 +124,7 @@ function initialize() {
 
        console.log('NV Clusters:', data);
         
-	NV.loadTile(data);
+       NV.loadTile(data);
         
 	for (var clusterIndex = 0; clusterIndex < data.length; clusterIndex++) {
 	    // parse cluster
@@ -297,8 +297,14 @@ function initialize() {
 
     }
 
-    initNV();
-
-    setTimeout(requestClusters, 1000);
+    if(NV.mode == "production")
+    {
+      initNV();
+      setTimeout(requestClusters, 1000);
+    }
+    if(NV.mode == "console")
+    {
+      update();
+    }
 };
 
