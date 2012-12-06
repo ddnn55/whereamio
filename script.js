@@ -2,7 +2,6 @@ var w = 1280,
     h = 800,
     spacing = 2,
     scale = 0.5;
-    //maxClusters = 128;
 
 var nodes, force, projection;
 
@@ -10,12 +9,17 @@ var svg = d3.select("#body").append("svg:svg")
     .attr("width", window.width)
     .attr("height", window.height);
 
+function zoom() {
+  projection.translate(d3.event.translate).scale(d3.event.scale);
+  //clusters.selectAll("circle").attr("d", path);
+  console.log('zoomed');
+}
+
 d3.json("tile.json", function(json) {
 
   json = json.sort(function(a, b) { return a.count < b.count; });
-  //json = json.slice(0, maxClusters);
 
-  var nodes = json.map(function(cluster) { return {
+  nodes = json.map(function(cluster) { return {
 	  radius: spacing + scale * Math.sqrt(cluster.count),
 	  x: cluster.center[1], y: cluster.center[0],
 	  anchor: cluster.center.reverse(),
@@ -34,13 +38,20 @@ d3.json("tile.json", function(json) {
   projection.origin(llbounds.center());
   projection.scale(400000);
 
-  /*d3.json("us.counties.500k.json", function(counties) {
+  var zoom = d3.behavior.zoom()
+    .translate(projection.translate())
+    .scale(projection.scale())
+    .scaleExtent([h, 8 * h])
+    .on("zoom", zoom);
+    //.on("zoom", function(){ console.log('on zoom thing'); });
+
+  d3.json("us.counties.500k.json", function(counties) {
     var g = svg.append("g").attr("id", "counties");
     g.selectAll("path")
       .data(counties.features)
     .enter().append("path")
-      .attr("d", d3.geo.path().projection(nyc));
-  });*/
+      .attr("d", d3.geo.path().projection(projection));
+  });
   
   nodes.forEach(function(d){
     var xy = projection([d.x, d.y]);
@@ -55,18 +66,8 @@ d3.json("tile.json", function(json) {
       .nodes(nodes)
       .size([w, h]);
   
-  //var root = nodes[0];
-  //root.radius = 0;
-  //root.fixed = true;
-
   force.start();
   
-  /*svg.selectAll("circle")
-      .data(nodes)
-    .enter().append("svg:circle")
-      .attr("r", function(d) { return d.radius - spacing; })
-      .style("fill", function(d, i) { return color(i % 3); })*/
- 
   var defs = svg.append("defs");
   defs.selectAll("clipPath")
         .data(nodes)
@@ -74,9 +75,11 @@ d3.json("tile.json", function(json) {
         .attr("id", function(d, i){ return i+"-clip"; })
           .append("svg:circle")
             .attr("r", function(d) { return d.radius - spacing; });
-  	//.attr("d", path)*/
 
-  var clusters = svg.append("g").attr("id", "clusters");
+  var clusters = svg.append("g")
+        .attr("id", "clusters")
+        .call(zoom);
+
   clusters.selectAll("image")
         .data(nodes)
       .enter().append("image")
@@ -116,27 +119,7 @@ d3.json("tile.json", function(json) {
          .attr("y", function(d) { return d.y - d.radius; });
   };
 
-  //tick();
   force.on("tick", tick);
-
-  var dragging = false;
-  svg.on("mousedown", function(d, i) {
-    dragging = true;
-  });
-  svg.on("mousemove", function(d, i) {
-    if(dragging) {
-      console.log(d3.event);
-      if(d3.event.mouseUp) {
-        dragging = false;
-      }
-      else {
-        // TODO drag
-      }
-    }
-  });
-  svg.on("mouseup", function(d, i) {
-    dragging = false;
-  });
 
 });
 
@@ -181,32 +164,3 @@ Bounds.prototype.center = function()
     (this.top + this.bottom) / 2.0
   ];
 }
-
-function handle(delta) {
-  var factor = 0.2 * delta + 1;
-  projection.scale(projection.scale() * factor);
-  force.resume();
-}
-
-function wheel(event){
-        var delta = 0;
-        if (!event) /* For IE. */
-                event = window.event;
-        if (event.wheelDelta) { /* IE/Opera. */
-                delta = event.wheelDelta/120;
-        } else if (event.detail) { /** Mozilla case. */
-                delta = -event.detail/3;
-        }
-        if (delta)
-                handle(delta);
-        if (event.preventDefault)
-                event.preventDefault();
-	event.returnValue = false;
-}
-
-if (window.addEventListener)
-        /** DOMMouseScroll is for mozilla. */
-        window.addEventListener('DOMMouseScroll', wheel, false);
-/** IE/Opera. */
-window.onmousewheel = document.onmousewheel = wheel;
-
