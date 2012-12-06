@@ -3,7 +3,33 @@ var w = 1280,
     spacing = 2,
     scale = 0.5;
 
-var nodes, force, projection;
+var nodes, allNodes, force, projection;
+
+var stats = new Stats();
+stats.setMode(0); // 0: fps, 1: ms;
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.left = '0px';
+stats.domElement.style.top = '0px';
+document.body.appendChild( stats.domElement );
+
+var WIOParams = function() {
+  var _this = this; 
+
+  this.clusterCount = 128;
+  // Define render logic ...
+
+  this.update = function() {
+    nodes = allNodes.slice(0, _this.clusterCount);
+    d3.selectAll("svg image")
+        .attr("visibility", function(d, i) { return nodes.indexOf(d) > -1 ? "visible" : "hidden"; });
+
+    if(force)
+    {
+      force.nodes(nodes).start();
+    }
+  };
+};
+var params = new WIOParams();
 
 var svg = d3.select("#body").append("svg:svg")
     .attr("width", window.width)
@@ -17,16 +43,22 @@ function zoom() {
 
 d3.json("tile.json", function(json) {
 
-  json = json.sort(function(a, b) { return a.count < b.count; });
+  json = json.sort(function(b, a) {
+    if(a.count < b.count) return -1;
+    if(a.count > b.count) return 1;
+    return 0;
+  });
 
-  nodes = json.map(function(cluster) { return {
+  allNodes = json.map(function(cluster) { return {
 	  radius: spacing + scale * Math.sqrt(cluster.count),
 	  x: cluster.center[1], y: cluster.center[0],
 	  anchor: cluster.center.reverse(),
 	  cluster: cluster
       };}),
       color = d3.scale.category10();
-  
+ 
+  params.update();
+
   var llbounds = new Bounds({
     left: nodes.map(function(d) { return d.anchor[0]; }).reduce(function(a, b){ return Math.min(a, b); }),
     right: nodes.map(function(d) { return d.anchor[0]; }).reduce(function(a, b){ return Math.max(a, b); }),
@@ -45,13 +77,13 @@ d3.json("tile.json", function(json) {
     .on("zoom", zoom);
     //.on("zoom", function(){ console.log('on zoom thing'); });
 
-  d3.json("us.counties.500k.json", function(counties) {
+  /*d3.json("us.counties.500k.json", function(counties) {
     var g = svg.append("g").attr("id", "counties");
     g.selectAll("path")
       .data(counties.features)
     .enter().append("path")
       .attr("d", d3.geo.path().projection(projection));
-  });
+  });*/
   
   nodes.forEach(function(d){
     var xy = projection([d.x, d.y]);
@@ -60,9 +92,9 @@ d3.json("tile.json", function(json) {
   });
 
   force = d3.layout.force()
-      .gravity(0.05)
+      .gravity(0.0)
       //.charge(function(d, i) { return i ? 0 : -2000; })
-      //.charge(function(d, i) { return i ? 0 : -2000; })
+      .charge(function(d, i) { return - 5 * d.radius; })
       .nodes(nodes)
       .size([w, h]);
   
@@ -70,7 +102,7 @@ d3.json("tile.json", function(json) {
   
   var defs = svg.append("defs");
   defs.selectAll("clipPath")
-        .data(nodes)
+        .data(allNodes)
       .enter().append("clipPath")
         .attr("id", function(d, i){ return i+"-clip"; })
           .append("svg:circle")
@@ -81,9 +113,10 @@ d3.json("tile.json", function(json) {
         .call(zoom);
 
   clusters.selectAll("image")
-        .data(nodes)
+        .data(allNodes)
       .enter().append("image")
         .attr("xlink:href", function(d, i){ return d.cluster.image ? d.cluster.image.image_url : ""; })
+        //.attr("xlink:href", function(d, i){ return "static/flickr/4/3420/5730532905_4c3771d806/b.jpg"; })
         .attr("preserveAspectRatio", "xMinYMin slice")
         //.attr("preserveAspectRatio", "none slice")
         .attr("width", function(d){ return d.radius * 2; })
@@ -95,11 +128,14 @@ d3.json("tile.json", function(json) {
         .on("click", function(d) { window.location = d.cluster.image.flickr_page_url; })
 
   var tick = function(e) {
+
+    stats.begin();
+
     var q = d3.geom.quadtree(nodes),
         i = 0,
         n = nodes.length;
  
-    var k = 1.0 * e.alpha;
+    var k = 0.5 * e.alpha;
     nodes.forEach(function(o, i) {
       var anchorXY = projection(o.anchor);
       o.y += (anchorXY[1] - o.y) * k;
@@ -117,6 +153,9 @@ d3.json("tile.json", function(json) {
     clusters.selectAll("image")
          .attr("x", function(d) { return d.x - d.radius; })
          .attr("y", function(d) { return d.y - d.radius; });
+
+    stats.end();
+
   };
 
   force.on("tick", tick);
@@ -136,7 +175,7 @@ function collide(node) {
           l = Math.sqrt(x * x + y * y),
           r = node.radius + quad.point.radius;
       if (l < r) {
-        l = (l - r) / l * .5;
+        l = (l - r) / l * 0.5;
         node.x -= x *= l;
         node.y -= y *= l;
         quad.point.x += x;
@@ -164,3 +203,12 @@ Bounds.prototype.center = function()
     (this.top + this.bottom) / 2.0
   ];
 }
+
+
+// -------------- dat.gui params ------------------
+
+
+window.onload = function() {
+  var gui = new dat.GUI();
+  gui.add(params, 'clusterCount', 0, 500).onChange(params.update);
+};
