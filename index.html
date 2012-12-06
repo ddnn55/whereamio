@@ -112,7 +112,7 @@ d3.json("tile.json", function(json) {
   clusters.selectAll("image")
         .data(nodes)
       .enter().append("image")
-        .attr("xlink:href", function(d, i){ return d.cluster.image ? "/" + d.cluster.image.image_url : ""; })
+        .attr("xlink:href", function(d, i){ return d.cluster.image ? d.cluster.image.image_url : ""; })
         .attr("preserveAspectRatio", "xMinYMin slice")
         //.attr("preserveAspectRatio", "none slice")
         .attr("width", function(d){ return d.radius * 2; })
