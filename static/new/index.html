@@ -29,8 +29,8 @@ circle {
 var w = 1280,
     h = 800,
     spacing = 2,
-    scale = 0.5,
-    maxClusters = 128;
+    scale = 0.5;
+    //maxClusters = 128;
 
 var nodes;
 
@@ -41,7 +41,8 @@ var svg = d3.select("#body").append("svg:svg")
 d3.json("tile.json", function(json) {
 
   json = json.sort(function(a, b) { return a.count < b.count; });
-  json = json.slice(0, maxClusters);
+  if(maxClusters)
+    json = json.slice(0, maxClusters);
 
   var nodes = json.map(function(cluster) { return {
 	  radius: spacing + scale * Math.sqrt(cluster.count),

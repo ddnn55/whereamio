@@ -174,9 +174,6 @@ def mines():
     return json.dumps(unfinished_mines)
 
 
-
-
-
 if __name__ == "__main__":
   #  app.run()
   # Bind to PORT if defined, otherwise default to 5000.
