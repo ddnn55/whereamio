@@ -56,7 +56,10 @@ var map = d3.select("body").append("div")
     .style("width", width + "px")
     .style("height", height + "px")
     .call(zoom)
-    .on("mousemove", mousemoved);
+    .on("mousemove", mousemoved)
+    .on("mouseover", function() { this.style.cursor = prefix + "grab" })
+    .on("mousedown", function() { this.style.cursor = prefix + "grabbing" })
+    .on("mouseup", function() { this.style.cursor = prefix + "grab" })
 
 var layer = map.append("div")
     .attr("class", "layer");
