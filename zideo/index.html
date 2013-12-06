@@ -32,7 +32,7 @@ body {
 </style>
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
-<script src="http://d3js.org/d3.geo.tile.v0.min.js"></script>
+<script src="d3.geo.tileHack.js"></script>
 <script>
 
 var width = Math.max(960, window.innerWidth),
@@ -47,7 +47,7 @@ var projection = d3.geo.mercator();
 
 var zoom = d3.behavior.zoom()
     .scale(1 << 9)
-    .scaleExtent([1 << 9, 1 << 13])
+    .scaleExtent([1 << 9, 1 << 14])
     .translate([width / 2, height / 2])
     .on("zoom", zoomed);
 
